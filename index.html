@@ -29,7 +29,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .app-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
 .app-title{font-size:18px;font-weight:700;letter-spacing:-.3px;}
 .app-title span{color:var(--accent);}
+.header-right{display:flex;align-items:center;gap:8px;}
 .header-clock{font-family:var(--mono);font-size:13px;color:var(--text2);}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s;cursor:help;}
+.sync-dot.ok{background:var(--green);}
+.sync-dot.err{background:var(--red);}
+.sync-dot.syncing{background:var(--amber);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
 
 /* TABS */
 .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:53px;z-index:49;}
@@ -56,7 +62,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .atag.music{border-color:rgba(74,128,192,.5);color:var(--blue);}
 .alarm-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;}
 
-/* TOGGLE SWITCH — OFF時はグレー、ON時はグリーン、つまみは白 */
+/* TOGGLE SWITCH */
 .sw{position:relative;width:46px;height:26px;cursor:pointer;flex-shrink:0;}
 .sw input{position:absolute;opacity:0;width:0;height:0;}
 .sw-track{position:absolute;inset:0;border-radius:99px;background:var(--surface3);border:1.5px solid var(--border2);transition:background .2s,border-color .2s;}
@@ -156,7 +162,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .time-digit{width:52px;height:52px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;cursor:pointer;}
 .time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
 .time-spin-col{display:flex;flex-direction:column;gap:2px;}
-.time-spin-btn{width:28px;height:24px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text2);font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;}
+.time-spin-btn{
+  width:36px;height:30px;
+  border:1px solid var(--border2);border-radius:6px;
+  background:var(--surface2);color:var(--text2);
+  font-size:15px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s,color .1s;user-select:none;
+  touch-action:manipulation;
+  /* スマホでも確実にタップできるサイズ */
+  min-width:36px;min-height:30px;
+}
 .time-spin-btn:active{background:var(--surface3);color:var(--text);}
 .time-colon{font-family:var(--mono);font-size:26px;color:var(--text2);user-select:none;padding:0 1px;}
 .time-hint{font-size:11px;color:var(--text3);margin-top:5px;}
@@ -232,21 +248,40 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .snackbar{position:fixed;bottom:80px;left:16px;right:16px;background:var(--surface3);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text);z-index:400;transform:translateY(6px);opacity:0;transition:all .22s;pointer-events:none;}
 .snackbar.show{transform:translateY(0);opacity:1;}
 
-/* TIMER */
+/* TIMER - タイマー一覧 */
+.timer-list-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;transition:border-color .12s;margin-bottom:8px;}
+.timer-list-card:active{border-color:var(--accent);}
+.timer-list-card-info{flex:1;min-width:0;}
+.timer-list-card-name{font-size:15px;font-weight:600;color:var(--text);}
+.timer-list-card-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.timer-list-card-arrow{font-size:18px;color:var(--text3);}
+.timer-list-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* TIMER - フェーズ編集 */
 .phase-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
-.phase-item{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
-.phase-item-top{display:flex;align-items:center;gap:8px;}
-.phase-item-bottom{display:flex;align-items:center;gap:6px;padding-left:4px;}
-.phase-announce-label{font-size:10px;color:var(--text3);white-space:nowrap;flex-shrink:0;}
-.phase-announce-input{flex:1;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--font);font-size:12px;color:var(--text);padding:5px 8px;outline:none;}
-.phase-announce-input:focus{border-color:var(--accent);}
+.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.phase-item-top{display:flex;align-items:center;gap:8px;padding:8px 10px;}
+.phase-announce-input{width:100%;border:none;border-top:1px solid var(--border);border-radius:0;background:var(--surface2);font-family:var(--font);font-size:13px;color:var(--text);padding:8px 10px;outline:none;}
+.phase-announce-input:focus{background:var(--surface3);}
 .phase-announce-input::placeholder{color:var(--text3);}
 .phase-drag{color:var(--text3);font-size:18px;cursor:grab;padding:0 2px;touch-action:none;}
-.phase-name-input{flex:1;border:none;outline:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text);min-width:0;}
-.phase-name-input::placeholder{color:var(--text3);}
 .phase-sep{color:var(--text3);font-size:12px;flex-shrink:0;}
-.phase-sec-input{width:52px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--mono);font-size:14px;color:var(--text);text-align:center;padding:4px 0;outline:none;}
+/* 秒数入力スピナー（スマホ対応） */
+.phase-sec-wrap{display:flex;align-items:center;gap:3px;flex-shrink:0;}
+.phase-sec-input{width:46px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--mono);font-size:14px;color:var(--text);text-align:center;padding:4px 0;outline:none;-moz-appearance:textfield;}
+.phase-sec-input::-webkit-outer-spin-button,.phase-sec-input::-webkit-inner-spin-button{-webkit-appearance:none;}
 .phase-sec-input:focus{border-color:var(--accent);}
+.phase-sec-spin-col{display:flex;flex-direction:column;gap:2px;}
+.phase-sec-spin-btn{
+  width:28px;height:20px;
+  border:1px solid var(--border2);border-radius:5px;
+  background:var(--surface2);color:var(--text2);
+  font-size:11px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s,color .1s;user-select:none;
+  touch-action:manipulation;min-width:28px;min-height:20px;
+}
+.phase-sec-spin-btn:active{background:var(--surface3);color:var(--text);}
 .phase-del{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;}
 .phase-del:active{color:var(--red);}
 .btn-add-phase{width:100%;padding:11px;border-radius:12px;border:1.5px dashed var(--border2);background:transparent;color:var(--text3);font-family:var(--font);font-size:13px;cursor:pointer;transition:border-color .12s,color .12s;}
@@ -269,20 +304,24 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-btn.secondary{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);}
 .timer-btn.secondary:active{background:var(--surface3);}
 
-.timer-phase-overview{display:flex;flex-direction:column;gap:4px;margin-bottom:40px;}
-.tpo-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface);transition:border-color .2s,background .2s;}
-.tpo-item.active{border-color:var(--accent);background:var(--accent-l);}
-.tpo-item.done{opacity:.45;}
-.tpo-num{font-size:11px;color:var(--text3);width:18px;text-align:right;flex-shrink:0;}
-.tpo-name{flex:1;font-size:13px;}
-.tpo-dur{font-family:var(--mono);font-size:12px;color:var(--text2);flex-shrink:0;}
+/* タイマー詳細ビューのback btn */
+.back-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.back-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.back-btn:active{background:var(--surface3);}
+.timer-detail-title{font-size:16px;font-weight:700;flex:1;}
+
+/* GAS SYNC */
+.gas-sync-info{font-size:10px;color:var(--text3);padding:4px 0 0;text-align:right;}
 </style>
 </head>
 <body>
 
 <header class="app-header">
   <div class="app-title">Smart<span>Alarm</span></div>
-  <div class="header-clock" id="hdr-clock"></div>
+  <div class="header-right">
+    <div class="header-clock" id="hdr-clock"></div>
+    <div class="sync-dot" id="sync-dot" title="ローカル保存"></div>
+  </div>
 </header>
 
 <div class="tabs">
@@ -324,52 +363,88 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   </div>
 </div>
 
-<!-- TIMER VIEW -->
+<!-- TIMER VIEW (一覧) -->
 <div id="view-timer" class="view">
-
-  <!-- ── フェーズ編集 ── -->
-  <div class="sec-label">磨く順番・時間の設定</div>
-  <div id="phase-list" class="phase-list"></div>
-  <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
-
-  <!-- ── アナウンス設定 ── -->
-  <div class="sec-label" style="margin-top:16px;">アナウンス</div>
-  <div class="settings-card">
-    <div class="settings-row">
-      <div><div class="settings-row-title">音声アナウンス</div><div class="settings-row-sub">Web Speech API（日本語）</div></div>
-      <label class="sw"><input type="checkbox" id="announce-speech" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
-    </div>
-    <div class="settings-row">
-      <div><div class="settings-row-title">効果音（ビープ）</div><div class="settings-row-sub">フェーズ切替時に鳴らす</div></div>
-      <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
-    </div>
+  <div id="timer-list-view">
+    <div class="sec-label">タイマー</div>
+    <div id="timer-card-list"></div>
+    <button class="btn-add-phase" style="margin-top:8px;" onclick="addTimerPreset()">＋ タイマーを追加</button>
   </div>
 
-  <!-- ── タイマー本体 ── -->
-  <div class="timer-display-card">
-    <div class="timer-phase-name" id="timer-phase-name">スタートを押してください</div>
-    <div class="timer-phase-progress" id="timer-phase-progress"></div>
-    <div class="timer-time" id="timer-time">00:00</div>
-    <div class="timer-total-bar-wrap">
-      <div class="timer-total-bar" id="timer-total-bar"></div>
+  <!-- タイマー詳細ビュー -->
+  <div id="timer-detail-view" style="display:none;">
+    <div class="back-row">
+      <button class="back-btn" onclick="showTimerList()">‹</button>
+      <div class="timer-detail-title" id="timer-detail-title">タイマー</div>
     </div>
-    <div class="timer-total-info" id="timer-total-info"></div>
+
+    <!-- ── フェーズ編集 ── -->
+    <div class="sec-label">ステップの設定</div>
+    <div id="phase-list" class="phase-list"></div>
+    <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
+
+    <!-- ── アナウンス設定 ── -->
+    <div class="sec-label" style="margin-top:16px;">アナウンス</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <div><div class="settings-row-title">音声アナウンス</div><div class="settings-row-sub">Web Speech API（日本語）</div></div>
+        <label class="sw"><input type="checkbox" id="announce-speech" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-row-title">効果音（ビープ）</div><div class="settings-row-sub">フェーズ切替時に鳴らす</div></div>
+        <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-row-title">カウントダウン音</div><div class="settings-row-sub">1秒ごとのカウント音</div></div>
+        <label class="sw"><input type="checkbox" id="announce-tick" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+    </div>
+
+    <!-- ── タイマー本体 ── -->
+    <div class="timer-display-card">
+      <div class="timer-phase-name" id="timer-phase-name">スタートを押してください</div>
+      <div class="timer-phase-progress" id="timer-phase-progress"></div>
+      <div class="timer-time" id="timer-time">00:00</div>
+      <div class="timer-total-bar-wrap">
+        <div class="timer-total-bar" id="timer-total-bar"></div>
+      </div>
+      <div class="timer-total-info" id="timer-total-info"></div>
+    </div>
+
+    <!-- ── コントロール ── -->
+    <div class="timer-controls">
+      <button class="timer-btn secondary" id="timer-reset-btn" onclick="timerReset()">リセット</button>
+      <button class="timer-btn primary" id="timer-start-btn" onclick="timerStartStop()">▶ スタート</button>
+    </div>
   </div>
-
-  <!-- ── コントロール ── -->
-  <div class="timer-controls">
-    <button class="timer-btn secondary" id="timer-reset-btn" onclick="timerReset()">リセット</button>
-    <button class="timer-btn primary" id="timer-start-btn" onclick="timerStartStop()">▶ スタート</button>
-  </div>
-
-  <!-- ── フェーズ一覧（実行中） ── -->
-  <div class="sec-label" style="margin-top:8px;">ステップ一覧</div>
-  <div id="timer-phase-overview" class="timer-phase-overview"></div>
-
 </div>
 
 <!-- SETTINGS VIEW -->
 <div id="view-settings" class="view">
+
+  <!-- GAS共有設定 -->
+  <div class="sec-label">グループ・クラウド同期</div>
+  <div class="settings-card">
+    <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div style="width:100%;">
+        <div class="settings-row-title">グループ</div>
+        <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
+      </div>
+      <div style="display:flex;gap:8px;width:100%;">
+        <button class="settings-btn" style="flex:1;" onclick="openGroupSheet()">グループ・ユーザー管理</button>
+        <button class="settings-btn" id="gas-sync-now-btn" onclick="syncFromRemote()" style="flex:1;">今すぐ同期</button>
+      </div>
+      <div class="gas-sync-info" id="gas-sync-info" style="width:100%;display:none;"></div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-title">GAS URL（クラウド共有）</div><div class="settings-row-sub">グループ設定で設定済みの場合に表示</div></div>
+    </div>
+    <div style="padding:0 16px 12px;">
+      <input type="url" id="gas-url-input" class="form-input" placeholder="https://script.google.com/…" style="font-size:12px;height:38px;">
+      <button class="btn-primary" style="margin-top:8px;padding:10px;" onclick="saveGasUrl()">接続・同期</button>
+    </div>
+  </div>
+
   <div class="sec-label">祝日データ</div>
   <div class="settings-card">
     <div class="settings-row">
@@ -409,7 +484,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v3.0</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.0</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
     <div class="settings-row">
       <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
       <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
@@ -443,7 +518,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <div id="time-kb-mode">
           <div class="time-kb-wrap">
             <div class="time-spinners">
-              <!-- 時 -->
               <div class="time-spin-unit">
                 <div class="time-digit-box">
                   <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00">
@@ -454,7 +528,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
                 </div>
               </div>
               <span class="time-colon">:</span>
-              <!-- 分 -->
               <div class="time-spin-unit">
                 <div class="time-digit-box">
                   <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00">
@@ -567,6 +640,60 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   </div>
 </div>
 
+<!-- GROUP / USER MANAGEMENT SHEET -->
+<div class="sheet-overlay" id="group-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-scroll">
+      <div class="sheet-title">グループ・ユーザー管理</div>
+
+      <!-- グループ一覧 -->
+      <div class="sec-label">グループ</div>
+      <div id="group-list-el" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <input type="text" id="new-group-input" class="form-input" style="flex:1;height:40px;font-size:14px;" placeholder="新しいグループ名">
+        <button class="settings-btn" onclick="addGroup()">追加</button>
+      </div>
+
+      <!-- 現在のグループのユーザー -->
+      <div class="sec-label">ユーザー（現在のグループ）</div>
+      <div id="user-list-el" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <input type="text" id="new-user-input" class="form-input" style="flex:1;height:40px;font-size:14px;" placeholder="新しいユーザー名">
+        <button class="settings-btn" onclick="addUser()">追加</button>
+      </div>
+
+      <!-- GAS URL -->
+      <div class="sec-label">GAS URL（クラウド共有）</div>
+      <div style="margin-bottom:8px;">
+        <input type="url" id="group-gas-url-input" class="form-input" style="font-size:12px;height:38px;" placeholder="https://script.google.com/…">
+        <button class="btn-primary" style="margin-top:8px;padding:10px;" onclick="saveGroupGasUrl()">このグループのURLを保存・同期</button>
+      </div>
+
+      <!-- GASセットアップ手順 -->
+      <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--text3);line-height:1.8;">
+        <div style="font-weight:700;color:var(--text2);margin-bottom:6px;">📋 GASセットアップ手順（1回だけ）</div>
+        <div>① <b>Googleスプレッドシートを新規作成</b></div>
+        <div>② メニュー「拡張機能」→「Apps Script」</div>
+        <div>③ 既存コードを消してGASコードを貼り付け → 保存</div>
+        <div>④「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」→ アクセス「全員」→「デプロイ」→ URLをコピー</div>
+        <div style="margin-top:8px;color:var(--amber);">⚠️ GASコードは設定>データ管理のエクスポートJSONに含まれません。別途管理してください。</div>
+      </div>
+
+      <!-- ユーザーコピー -->
+      <div class="sec-label">ユーザーコピー</div>
+      <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:12px;color:var(--text3);">
+        あるユーザーの設定を別ユーザーにコピーして個別編集できます。
+      </div>
+      <div id="copy-user-section"></div>
+
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-cancel" onclick="closeGroupSheet()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- FIRING OVERLAY -->
 <div id="firing-overlay">
   <div class="firing-time" id="firing-time">07:00</div>
@@ -580,24 +707,257 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <script>
 'use strict';
 // ───────────────────────────────────────────
-// STATE
+// GAS / GROUP / USER STATE
+// ───────────────────────────────────────────
+const GROUPS_KEY = 'sa_groups';
+const LOCAL_DATA_KEY = 'sa_data'; // prefix: sa_data_<groupId>
+
+function loadGroups() {
+  try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '[]'); } catch { return []; }
+}
+function saveGroups(g) { localStorage.setItem(GROUPS_KEY, JSON.stringify(g)); }
+
+function getCurrentGroupId() { return localStorage.getItem('sa_current_group') || ''; }
+function setCurrentGroupId(id) { localStorage.setItem('sa_current_group', id); }
+
+function getCurrentGroup() {
+  const id = getCurrentGroupId();
+  return loadGroups().find(g => g.id === id) || null;
+}
+
+function getGasUrl() {
+  const g = getCurrentGroup();
+  return g ? (g.gasUrl || '') : '';
+}
+
+function groupDataKey(gid) {
+  return LOCAL_DATA_KEY + '_' + (gid || getCurrentGroupId() || 'default');
+}
+
+function loadGroupData(gid) {
+  try { return JSON.parse(localStorage.getItem(groupDataKey(gid)) || 'null') || null; }
+  catch { return null; }
+}
+function saveGroupData(d, gid) {
+  localStorage.setItem(groupDataKey(gid), JSON.stringify(d));
+}
+
+// 現在グループのメインデータ: { users:[], currentUserId, deletedUsers:[] }
+let _groupCache = null;
+function getGroupCache() {
+  if (!_groupCache) _groupCache = initGroupData();
+  return _groupCache;
+}
+function setGroupCache(d) { _groupCache = d; saveGroupData(d); }
+function resetGroupCache() { _groupCache = null; }
+
+function initGroupData() {
+  let d = loadGroupData();
+  if (!d || !d.users) {
+    // デフォルトユーザーで初期化
+    d = { currentUserId: 'u_default', users: [{ id: 'u_default', name: 'わたし' }], deletedUsers: [] };
+    saveGroupData(d);
+  }
+  if (!d.deletedUsers) d.deletedUsers = [];
+  return d;
+}
+
+function getCurrentUserId() { return getGroupCache().currentUserId || ''; }
+function setCurrentUserId(id) {
+  const d = getGroupCache();
+  d.currentUserId = id;
+  setGroupCache(d);
+}
+
+// ───────────────────────────────────────────
+// MAIN STATE (per-user)
 // ───────────────────────────────────────────
 let alarms = [], holidays = {}, overrides = {};
 let snoozeMin = 10;
+let timerPresets = []; // [{id, name, phases:[{sec,announce}]}]
 let calY, calM;
-let selAlarmId = null;   // カレンダーで選択中のアラームID
+let selAlarmId = null;
 let firingAlarm = null, firingAudio = null, firingCtx = null;
 let loopTimer = null;
 let lastCheckedMin = -1;
 let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
-let musicStore = {};     // {alarmId:{data:dataURL, name:str}}
+let musicStore = {};
+
 let previewCtx = null, previewTimer = null;
+let currentTimerPresetId = null;
+let timerPhases = [];
+let timerState = 'idle';
+let timerPhaseIdx = 0;
+let timerRemain = 0;
+let timerInterval = null;
+let timerTotalElapsed = 0;
+let timerTotalSec = 0;
+
+// ───────────────────────────────────────────
+// SYNC DOT
+// ───────────────────────────────────────────
+function setSyncDot(state) {
+  const dot = document.getElementById('sync-dot');
+  if (!dot) return;
+  dot.className = 'sync-dot' + (state !== 'off' ? ' ' + state : '');
+  dot.title = { ok: '同期済み', err: '同期エラー', syncing: '同期中…', off: 'ローカル保存' }[state] || '';
+}
+
+// ───────────────────────────────────────────
+// REMOTE (GAS)
+// ───────────────────────────────────────────
+async function remoteLoad(url) {
+  const u = url || getGasUrl();
+  if (!u) return null;
+  try {
+    const res = await fetch(u, { cache: 'no-store' });
+    const data = await res.json();
+    return (data && data.users) ? data : null;
+  } catch { return null; }
+}
+
+async function remoteSave(data) {
+  const url = getGasUrl();
+  if (!url) return false;
+  setSyncDot('syncing');
+  try {
+    await fetch(url, { method: 'POST', body: JSON.stringify(data) });
+    setSyncDot('ok');
+    return true;
+  } catch { setSyncDot('err'); return false; }
+}
+
+// ── SYNC (マージ戦略: リモートをベースに自分のユーザーデータで上書き) ──
+async function syncFromRemote(silent = false) {
+  const url = getGasUrl();
+  if (!url) { setSyncDot('off'); if (!silent) showSnack('GAS URLが設定されていません'); return; }
+  if (!silent) setSyncDot('syncing');
+  const remote = await remoteLoad(url);
+  if (!remote) { if (!silent) { setSyncDot('err'); showSnack('同期に失敗しました'); } return; }
+
+  const local = getGroupCache();
+  const curUid = local.currentUserId;
+  const merged = { ...local };
+
+  // deletedUsers マージ
+  const remoteDeleted = remote.deletedUsers || [];
+  const localDeleted = (merged.deletedUsers || []).slice();
+  remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
+  merged.deletedUsers = localDeleted;
+
+  // users マージ: リモートをベースに、currentUser はローカルで上書き
+  const newUsers = [];
+  (remote.users || []).forEach(ru => {
+    if (merged.deletedUsers.find(u => u.id === ru.id)) return;
+    if (ru.id === curUid) {
+      const lu = merged.users.find(u => u.id === ru.id) || {};
+      newUsers.push({ ...ru, ...lu }); // ローカルで上書き
+    } else {
+      newUsers.push(ru);
+    }
+  });
+  // リモートに存在しないローカルユーザーを追加
+  merged.users.forEach(lu => {
+    if (!newUsers.find(u => u.id === lu.id) && !merged.deletedUsers.find(u => u.id === lu.id)) {
+      newUsers.push(lu);
+    }
+  });
+  merged.users = newUsers;
+
+  // グループ名をリモートから反映
+  if (remote.groupName) {
+    const groups = loadGroups();
+    const gid = getCurrentGroupId();
+    const g = groups.find(g => g.id === gid);
+    if (g && g.gasUrl && remote.groupName !== g.name) { g.name = remote.groupName; saveGroups(groups); }
+  }
+
+  setGroupCache(merged);
+
+  // データを自分のユーザーから再読み込み
+  loadUserData();
+  renderGroupName();
+  renderGroupSheet();
+  if (!silent) { setSyncDot('ok'); showSnack('同期しました'); }
+  else setSyncDot('ok');
+  updateGasSyncInfo();
+}
+
+async function pushToRemote() {
+  const url = getGasUrl();
+  if (!url) return;
+  const d = getGroupCache();
+  const g = getCurrentGroup();
+  const dataToSave = g ? { ...d, groupName: g.name } : d;
+  await remoteSave(dataToSave);
+  updateGasSyncInfo();
+}
+
+function updateGasSyncInfo() {
+  const el = document.getElementById('gas-sync-info');
+  if (!el) return;
+  const url = getGasUrl();
+  if (!url) { el.style.display = 'none'; return; }
+  const now = new Date().toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  el.textContent = '最終同期: ' + now;
+  el.style.display = '';
+}
+
+// ───────────────────────────────────────────
+// SAVE / LOAD (per-user state in group)
+// ───────────────────────────────────────────
+function saveUserData() {
+  const d = getGroupCache();
+  const uid = getCurrentUserId();
+  let user = d.users.find(u => u.id === uid);
+  if (!user) { user = { id: uid, name: 'わたし' }; d.users.push(user); }
+  user.alarms = alarms;
+  user.holidays = holidays;
+  user.overrides = overrides;
+  user.snoozeMin = snoozeMin;
+  user.timerPresets = timerPresets;
+  setGroupCache(d);
+  // GAS に非同期アップロード
+  if (getGasUrl()) {
+    const g = getCurrentGroup();
+    const dataToSave = g ? { ...d, groupName: g.name } : d;
+    remoteSave(dataToSave).catch(() => {});
+  }
+}
+
+function loadUserData() {
+  const d = getGroupCache();
+  const uid = getCurrentUserId();
+  const user = d.users.find(u => u.id === uid) || {};
+  try {
+    alarms = user.alarms || [];
+    holidays = user.holidays || {};
+    overrides = user.overrides || {};
+    snoozeMin = user.snoozeMin || 10;
+    timerPresets = user.timerPresets || [];
+    try { musicStore = JSON.parse(localStorage.getItem('sa_music_' + uid) || '{}'); } catch { musicStore = {}; }
+  } catch { alarms = []; holidays = {}; overrides = {}; timerPresets = []; }
+  document.getElementById('snooze-sel').value = snoozeMin;
+  document.getElementById('snooze-disp').textContent = snoozeMin;
+}
+
+function saveData() {
+  saveUserData();
+}
 
 // ───────────────────────────────────────────
 // INIT
 // ───────────────────────────────────────────
 function init() {
-  loadData();
+  // グループが未設定なら default グループを作成
+  let groups = loadGroups();
+  if (!groups.length) {
+    groups = [{ id: 'g_default', name: 'メイン', gasUrl: '' }];
+    saveGroups(groups);
+  }
+  if (!getCurrentGroupId()) setCurrentGroupId(groups[0].id);
+
+  loadUserData();
   const now = new Date();
   calY = now.getFullYear(); calM = now.getMonth();
   renderAlarms();
@@ -608,18 +968,28 @@ function init() {
   setInterval(checkAlarms, 5000);
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
-  loadTimerPhases();
+  renderTimerList();
+  renderGroupName();
+  document.getElementById('gas-url-input').value = getGasUrl();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-  // weekday btns
   document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
-  // time inputs: live validation + focus clear
   const th = document.getElementById('t-h');
   const tm = document.getElementById('t-m');
   th.addEventListener('focus', function() { this.select(); });
   tm.addEventListener('focus', function() { this.select(); });
-  th.addEventListener('input', function () { clampNum(this, 0, 23); });
-  tm.addEventListener('input', function () { clampNum(this, 0, 59); });
+  th.addEventListener('input', function() { clampNum(this, 0, 23); });
+  tm.addEventListener('input', function() { clampNum(this, 0, 59); });
+  // 自動同期（GAS URLがあれば起動時にサイレント同期）
+  if (getGasUrl()) syncFromRemote(true);
+}
+
+function renderGroupName() {
+  const g = getCurrentGroup();
+  const el = document.getElementById('gas-group-name-disp');
+  if (el) el.textContent = g ? g.name : '（グループ未設定）';
+  const gasInput = document.getElementById('gas-url-input');
+  if (gasInput) gasInput.value = getGasUrl();
 }
 
 function clampNum(input, min, max) {
@@ -639,28 +1009,6 @@ function spinTime(field, delta) {
 }
 
 // ───────────────────────────────────────────
-// PERSIST
-// ───────────────────────────────────────────
-function saveData() {
-  localStorage.setItem('sa_alarms', JSON.stringify(alarms));
-  localStorage.setItem('sa_holidays', JSON.stringify(holidays));
-  localStorage.setItem('sa_overrides', JSON.stringify(overrides));
-  localStorage.setItem('sa_snooze', snoozeMin);
-  try { localStorage.setItem('sa_music', JSON.stringify(musicStore)); } catch (e) { showSnack('音楽データが大きすぎます'); }
-}
-function loadData() {
-  try {
-    alarms = JSON.parse(localStorage.getItem('sa_alarms') || '[]');
-    holidays = JSON.parse(localStorage.getItem('sa_holidays') || '{}');
-    overrides = JSON.parse(localStorage.getItem('sa_overrides') || '{}');
-    snoozeMin = parseInt(localStorage.getItem('sa_snooze') || '10');
-    musicStore = JSON.parse(localStorage.getItem('sa_music') || '{}');
-  } catch (e) { alarms = []; holidays = {}; overrides = {}; musicStore = {}; }
-  document.getElementById('snooze-sel').value = snoozeMin;
-  document.getElementById('snooze-disp').textContent = snoozeMin;
-}
-
-// ───────────────────────────────────────────
 // CLOCK HEADER
 // ───────────────────────────────────────────
 function startClock() {
@@ -673,16 +1021,17 @@ function startClock() {
 }
 
 // ───────────────────────────────────────────
-// TABS（タイマー対応に更新）
+// TABS
 // ───────────────────────────────────────────
 function switchTab(name) {
-  const names = ['alarms','calendar','timer','settings'];
-  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', names[i] === name));
+  const names = ['alarms', 'calendar', 'timer', 'settings'];
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('view-' + name).classList.add('active');
   document.getElementById('add-bar').style.display = name === 'alarms' ? '' : 'none';
   if (name === 'calendar') { renderCalAlarmList(); renderCalendar(); }
-  if (name === 'timer') { renderPhaseList(); renderPhaseOverview(); }
+  if (name === 'timer') { renderTimerList(); }
+  if (name === 'settings') { renderGroupName(); }
 }
 
 // ───────────────────────────────────────────
@@ -694,7 +1043,7 @@ function renderAlarms() {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏰</div>アラームがありません<br>右下の ＋ から追加してください</div>`;
     return;
   }
-  const DN = ['日','月','火','水','木','金','土'];
+  const DN = ['日', '月', '火', '水', '木', '金', '土'];
   el.innerHTML = alarms.map(a => {
     const days = a.days?.length ? a.days.map(d => DN[d]).join('・') : '1回のみ';
     const tags = [];
@@ -753,9 +1102,8 @@ function openModal(id = null) {
     clockH = 7; clockM = 0;
     document.getElementById('alarm-label').value = '';
     document.getElementById('skip-hol').checked = true;
-    [1,2,3,4,5].forEach(d => document.querySelector(`.wd-btn[data-d="${d}"]`).classList.add('sel'));
+    [1, 2, 3, 4, 5].forEach(d => document.querySelector(`.wd-btn[data-d="${d}"]`).classList.add('sel'));
   }
-  // Reset to keyboard mode
   document.getElementById('time-kb-mode').style.display = '';
   document.getElementById('time-clock-mode').style.display = 'none';
   document.getElementById('alarm-sheet').classList.add('open');
@@ -783,11 +1131,11 @@ function saveAlarm() {
   const skipHolidays = document.getElementById('skip-hol').checked;
   const sound = document.querySelector('.sound-opt.sel')?.dataset.s || 'beep';
 
-  // Move pending music data to final id
   if (sound === 'music' && musicStore['__pending__']) {
     musicStore[id] = musicStore['__pending__'];
     delete musicStore['__pending__'];
   }
+  try { localStorage.setItem('sa_music_' + getCurrentUserId(), JSON.stringify(musicStore)); } catch (e) {}
 
   const idx = alarms.findIndex(a => a.id === id);
   const alarm = { id, time, label, days, skipHolidays, sound, enabled: true };
@@ -838,7 +1186,7 @@ function onMusicFile(e) {
   reader.onload = ev => {
     musicStore[storeKey] = { data: ev.target.result, name: file.name };
     document.getElementById('music-name').textContent = file.name;
-    try { saveData(); } catch (err) { showSnack('ファイルが大きすぎる可能性があります'); }
+    try { localStorage.setItem('sa_music_' + getCurrentUserId(), JSON.stringify(musicStore)); } catch (err) { showSnack('ファイルが大きすぎる可能性があります'); }
   };
   reader.readAsDataURL(file);
 }
@@ -849,102 +1197,87 @@ function onMusicFile(e) {
 function toggleTimeMode() {
   const kb = document.getElementById('time-kb-mode');
   const cl = document.getElementById('time-clock-mode');
-  if (kb.style.display !== 'none') {
-    // → 時計モードへ
-    const h = parseInt(document.getElementById('t-h').value);
-    const m = parseInt(document.getElementById('t-m').value);
-    if (!isNaN(h) && h >= 0 && h <= 23) clockH = h;
-    if (!isNaN(m) && m >= 0 && m <= 59) clockM = m;
-    clockMode = 'h';
-    kb.style.display = 'none'; cl.style.display = '';
-    setClockMode('h');
-  } else {
-    // → キーボードモードへ
-    document.getElementById('t-h').value = clockH;
-    document.getElementById('t-m').value = clockM;
-    cl.style.display = 'none'; kb.style.display = '';
-  }
+  const isKb = kb.style.display !== 'none';
+  kb.style.display = isKb ? 'none' : '';
+  cl.style.display = isKb ? '' : 'none';
+  if (!isKb) { buildClockFace(); updateClockHand(); }
 }
 
-// ───────────────────────────────────────────
-// CLOCK PICKER
-// ───────────────────────────────────────────
-function setClockMode(mode) {
-  clockMode = mode;
-  document.getElementById('btn-ch').classList.toggle('active', mode === 'h');
-  document.getElementById('btn-cm').classList.toggle('active', mode === 'm');
-  drawClock();
+function setClockMode(m) {
+  clockMode = m;
+  document.getElementById('btn-ch').classList.toggle('active', m === 'h');
+  document.getElementById('btn-cm').classList.toggle('active', m === 'm');
+  buildClockFace(); updateClockHand();
 }
 
-function drawClock() {
+function buildClockFace() {
   const face = document.getElementById('clock-face');
-  if (!face) return;
-  face.querySelectorAll('.clock-num').forEach(n => n.remove());
+  const existing = face.querySelectorAll('.clock-num');
+  existing.forEach(e => e.remove());
+  const r = 90, cx = 110, cy = 110;
+  const nums = clockMode === 'h'
+    ? [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    : [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+  nums.forEach((n, i) => {
+    const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    const el = document.createElement('div');
+    el.className = 'clock-num';
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    el.textContent = n;
+    const isActive = clockMode === 'h' ? (clockH % 12 === n % 12) : (clockM === n);
+    if (isActive) el.classList.add('active');
+    el.addEventListener('click', () => {
+      if (clockMode === 'h') clockH = n === 12 ? 0 : n;
+      else clockM = n;
+      updateClockDisplay(); buildClockFace(); updateClockHand();
+    });
+    face.appendChild(el);
+  });
+}
+
+function updateClockHand() {
   const hand = document.getElementById('c-hand');
-  const r = face.offsetWidth / 2 || 110;
-  let ang;
+  const angle = clockMode === 'h'
+    ? ((clockH % 12) / 12) * 360 - 90
+    : (clockM / 60) * 360 - 90;
+  hand.style.transform = `rotate(${angle + 90}deg)`;
+}
 
-  if (clockMode === 'h') {
-    // Outer ring: 1–12(=0), Inner ring: 13–23
-    for (let i = 0; i < 24; i++) {
-      const isInner = i >= 12;
-      const nr = r * (isInner ? 0.52 : 0.76);
-      const a = ((i % 12) / 12) * 2 * Math.PI - Math.PI / 2;
-      const el = document.createElement('div');
-      el.className = 'clock-num' + (clockH === i ? ' active' : '');
-      el.textContent = i === 0 ? '0' : String(i);
-      el.style.cssText = `left:${r + nr * Math.cos(a)}px;top:${r + nr * Math.sin(a)}px;font-size:${isInner ? '11' : '13'}px;`;
-      el.addEventListener('click', ev => { ev.stopPropagation(); clockH = i; setClockMode('h'); });
-      face.appendChild(el);
-    }
-    ang = ((clockH % 12) / 12) * 360 - 90;
-    hand.style.height = clockH >= 12 ? '52px' : '72px';
-  } else {
-    for (let i = 0; i < 12; i++) {
-      const v = i * 5;
-      const a = (i / 12) * 2 * Math.PI - Math.PI / 2;
-      const nr = r * 0.76;
-      const el = document.createElement('div');
-      el.className = 'clock-num' + (Math.round(clockM / 5) % 12 === i ? ' active' : '');
-      el.textContent = pad(v);
-      el.style.cssText = `left:${r + nr * Math.cos(a)}px;top:${r + nr * Math.sin(a)}px;`;
-      el.addEventListener('click', ev => { ev.stopPropagation(); clockM = v; drawClock(); });
-      face.appendChild(el);
-    }
-    ang = (clockM / 60) * 360 - 90;
-    hand.style.height = '80px';
-  }
-  hand.style.transform = `translateX(-50%) rotate(${ang + 90}deg)`;
-  hand.style.marginTop = `-${parseInt(hand.style.height)}px`;
-  hand.style.marginLeft = '-1px';
+function updateClockDisplay() {
   document.getElementById('clock-disp').textContent = pad(clockH) + ':' + pad(clockM);
+  document.getElementById('t-h').value = clockH;
+  document.getElementById('t-m').value = clockM;
 }
 
-function cDragStart(e) { cDragging = true; cProcess(e); }
-function cDragMove(e) { if (!cDragging) return; cProcess(e); }
-function cDragEnd(e) {
-  cDragging = false;
-  if (clockMode === 'h') setClockMode('m');
-}
-function cProcess(e) {
+function cDragStart(e) {
+  cDragging = true;
+  cUpdateFromEvent(e);
   e.preventDefault();
+}
+function cDragMove(e) {
+  if (!cDragging) return;
+  cUpdateFromEvent(e);
+  e.preventDefault();
+}
+function cDragEnd(e) { cDragging = false; e.preventDefault(); }
+
+function cUpdateFromEvent(e) {
   const face = document.getElementById('clock-face');
   const rect = face.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-  const pt = e.touches ? e.touches[0] : e;
-  const dx = pt.clientX - cx, dy = pt.clientY - cy;
-  let ang = Math.atan2(dy, dx) + Math.PI / 2;
-  if (ang < 0) ang += 2 * Math.PI;
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const px = (e.touches ? e.touches[0].clientX : e.clientX) - cx;
+  const py = (e.touches ? e.touches[0].clientY : e.clientY) - cy;
+  const angle = Math.atan2(py, px) * 180 / Math.PI + 90;
+  const normalized = ((angle % 360) + 360) % 360;
   if (clockMode === 'h') {
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const inner = dist < rect.width * 0.3;
-    let hv = Math.round((ang / (2 * Math.PI)) * 12) % 12;
-    clockH = inner ? hv + 12 : hv;
-    if (clockH === 24) clockH = 0;
+    clockH = Math.round(normalized / 30) % 12;
   } else {
-    clockM = Math.round((ang / (2 * Math.PI)) * 60) % 60;
+    clockM = Math.round(normalized / 6) % 60;
   }
-  drawClock();
+  updateClockDisplay(); buildClockFace(); updateClockHand();
 }
 
 // ───────────────────────────────────────────
@@ -953,116 +1286,112 @@ function cProcess(e) {
 function renderCalAlarmList() {
   const el = document.getElementById('cal-alarm-list');
   if (!alarms.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">アラームを登録してください</div>';
-    selAlarmId = null; return;
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0;">アラームがありません</div>';
+    return;
   }
-  el.innerHTML = alarms.map(a =>
-    `<div class="cal-alarm-item${selAlarmId === a.id ? ' sel' : ''}" onclick="selCalAlarm('${a.id}')">
+  el.innerHTML = alarms.map(a => {
+    const sel = a.id === selAlarmId;
+    return `<div class="cal-alarm-item${sel ? ' sel' : ''}" onclick="selCalAlarm('${a.id}')">
       <div class="cal-alarm-item-l">
         <div class="cal-ai-dot"></div>
-        <div><div class="cal-ai-time">${esc(a.time)}</div><div class="cal-ai-name">${esc(a.label || '（ラベルなし）')}</div></div>
+        <div>
+          <div class="cal-ai-time">${esc(a.time)}</div>
+          <div class="cal-ai-name">${esc(a.label || '（ラベルなし）')}</div>
+        </div>
       </div>
       <div class="cal-ai-status">${a.enabled ? '有効' : '無効'}</div>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 function selCalAlarm(id) {
-  selAlarmId = selAlarmId === id ? null : id;
-  renderCalAlarmList(); renderCalendar();
-  document.getElementById('cal-hint').textContent = selAlarmId
-    ? '② 下のカレンダーで日付をタップ → デフォルト → 強制ON → 強制OFF → デフォルト と切り替わります。'
-    : 'アラームを選択して、下のカレンダーで日付をタップするとON/OFFを個別設定できます。';
-}
-
-function changeMonth(d) {
-  calM += d;
-  if (calM > 11) { calM = 0; calY++; }
-  if (calM < 0) { calM = 11; calY--; }
+  selAlarmId = id;
+  renderCalAlarmList();
   renderCalendar();
 }
 
+function changeMonth(d) { calM += d; if (calM < 0) { calM = 11; calY--; } if (calM > 11) { calM = 0; calY++; } renderCalendar(); }
+
 function renderCalendar() {
   document.getElementById('cal-month-label').textContent = `${calY}年${calM + 1}月`;
-  const grid = document.getElementById('cal-grid');
-  const today = new Date();
   const firstDow = new Date(calY, calM, 1).getDay();
   const daysInMonth = new Date(calY, calM + 1, 0).getDate();
-  const prevDays = new Date(calY, calM, 0).getDate();
+  const today = new Date();
+  const todayStr = fmtDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
+  const alarm = selAlarmId ? alarms.find(a => a.id === selAlarmId) : null;
+  const DN = ['日', '月', '火', '水', '木', '金', '土'];
   let html = '';
-
-  for (let i = firstDow - 1; i >= 0; i--) {
-    html += `<div class="cal-cell other-month"><span>${prevDays - i}</span></div>`;
+  for (let i = 0; i < firstDow; i++) {
+    const pd = new Date(calY, calM, -firstDow + i + 1);
+    html += `<div class="cal-cell other-month">${pd.getDate()}</div>`;
   }
-
-  const selA = selAlarmId ? alarms.find(a => a.id === selAlarmId) : null;
-
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = fmtDate(calY, calM + 1, d);
     const dow = new Date(calY, calM, d).getDay();
-    const isToday = today.getFullYear() === calY && today.getMonth() === calM && today.getDate() === d;
+    const isToday = ds === todayStr;
     const isHol = !!holidays[ds];
+    const isSun = dow === 0, isSat = dow === 6;
     let cls = 'cal-cell';
     if (isToday) cls += ' today';
-    if (isHol || dow === 0) cls += ' sunday holiday';
-    else if (dow === 6) cls += ' saturday';
-
-    let dotHtml = '';
-    if (selA && selA.enabled) {
-      const ov = (overrides[selA.id] || {})[ds];
-      const def = willFireByDefault(selA, dow, isHol);
-      if (ov === true) { cls += ' s-force-on'; dotHtml = `<div class="cell-dot on"></div>`; }
-      else if (ov === false) { cls += ' s-force-off'; dotHtml = `<div class="cell-dot off"></div>`; }
-      else if (def) { cls += ' s-default-on'; dotHtml = `<div class="cell-dot on"></div>`; }
-      else { cls += ' s-default-off'; }
+    if (isHol) cls += ' holiday';
+    else if (isSun) cls += ' sunday';
+    else if (isSat) cls += ' saturday';
+    let dots = '';
+    if (alarm) {
+      const ov = (overrides[alarm.id] || {})[ds];
+      const willFire = willFireByDefault(alarm, dow, isHol);
+      if (ov === true) cls += ' s-force-on';
+      else if (ov === false) cls += ' s-force-off';
+      else if (willFire) cls += ' s-default-on';
+      else cls += ' s-default-off';
+      if (ov === true) dots += '<div class="cell-dot on"></div>';
+      else if (ov === false) dots += '<div class="cell-dot off"></div>';
+      else if (willFire) dots += '<div class="cell-dot on"></div>';
     }
-
-    const holDot = isHol ? `<div class="cell-dot hol"></div>` : '';
-    const clickAttr = selAlarmId ? `onclick="tapDate('${ds}')"` : '';
-    html += `<div class="${cls}" ${clickAttr}><span>${d}</span>${dotHtml}${holDot}</div>`;
+    if (isHol) dots += '<div class="cell-dot hol"></div>';
+    html += `<div class="${cls}" onclick="toggleOverride('${ds}')">${d}${dots}</div>`;
   }
-
-  const total = firstDow + daysInMonth;
-  const rem = (7 - (total % 7)) % 7;
-  for (let i = 1; i <= rem; i++) html += `<div class="cal-cell other-month"><span>${i}</span></div>`;
-  grid.innerHTML = html;
+  document.getElementById('cal-grid').innerHTML = html;
 }
 
-function tapDate(ds) {
-  if (!selAlarmId) return;
+function willFireByDefault(alarm, dow, isHol) {
+  if (!alarm.enabled) return false;
+  if (alarm.skipHolidays && isHol) return false;
+  if (!alarm.days?.length) return true;
+  return alarm.days.includes(dow);
+}
+
+function toggleOverride(ds) {
+  if (!selAlarmId) { showSnack('アラームを選択してください'); return; }
   if (!overrides[selAlarmId]) overrides[selAlarmId] = {};
   const cur = overrides[selAlarmId][ds];
-  if (cur === undefined) overrides[selAlarmId][ds] = true;
-  else if (cur === true) overrides[selAlarmId][ds] = false;
-  else delete overrides[selAlarmId][ds];
-  saveData(); renderCalendar(); updateNextInfo();
-}
-
-function willFireByDefault(a, dow, isHol) {
-  const dayOk = !a.days || !a.days.length || a.days.includes(dow);
-  return dayOk && !(a.skipHolidays && isHol);
+  const alarm = alarms.find(a => a.id === selAlarmId);
+  const d = new Date(ds); const dow = d.getDay(); const isHol = !!holidays[ds];
+  const def = willFireByDefault(alarm, dow, isHol);
+  if (cur === undefined) overrides[selAlarmId][ds] = !def;
+  else if (cur !== def) delete overrides[selAlarmId][ds];
+  else overrides[selAlarmId][ds] = !cur;
+  saveData(); renderCalendar();
 }
 
 // ───────────────────────────────────────────
-// ALARM ENGINE
+// ALARM CHECK
 // ───────────────────────────────────────────
 function checkAlarms() {
   const now = new Date();
   const min = now.getHours() * 60 + now.getMinutes();
   if (min === lastCheckedMin) return;
   lastCheckedMin = min;
-  if (firingAlarm) return;
-
   const ds = fmtDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const dow = now.getDay();
-  const isHol = !!holidays[ds];
-  const timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
-
+  const dow = now.getDay(); const isHol = !!holidays[ds];
   for (const a of alarms) {
-    if (!a.enabled || a.time !== timeStr) continue;
+    const [ah, am] = a.time.split(':').map(Number);
+    if (ah * 60 + am !== min) continue;
     const ov = (overrides[a.id] || {})[ds];
     if (ov === false) continue;
-    if (ov === true || willFireByDefault(a, dow, isHol)) { fireAlarm(a); return; }
+    if (ov !== true && !willFireByDefault(a, dow, isHol)) continue;
+    fireAlarm(a);
+    break;
   }
 }
 
@@ -1070,90 +1399,79 @@ function fireAlarm(a) {
   firingAlarm = a;
   document.getElementById('firing-time').textContent = a.time;
   document.getElementById('firing-label').textContent = a.label || '起床の時間です';
-  document.getElementById('snooze-disp').textContent = snoozeMin;
   document.getElementById('firing-overlay').classList.add('open');
-  startAudio(a);
+  document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('firing'));
   const card = document.getElementById('acard-' + a.id);
   if (card) card.classList.add('firing');
-  if (!a.days || !a.days.length) { a.enabled = false; saveData(); renderAlarms(); }
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('⏰ ' + (a.label || '起床'), { body: a.time });
+    new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), silent: true });
   }
-  updateNextInfo();
+  startAlarmSound(a);
+}
+
+function startAlarmSound(a) {
+  stopAlarmSound();
+  if (a.sound === 'music' && musicStore[a.id]) {
+    firingAudio = new Audio(musicStore[a.id].data);
+    firingAudio.loop = true; firingAudio.play().catch(() => {});
+  } else {
+    firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+    loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
+    playTones(firingCtx, a.sound || 'beep', 1);
+  }
+}
+
+function stopAlarmSound() {
+  clearInterval(loopTimer); loopTimer = null;
+  if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
+  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
 }
 
 function stopAlarm() {
-  stopAudio();
+  stopAlarmSound();
   document.getElementById('firing-overlay').classList.remove('open');
-  if (firingAlarm) {
-    const card = document.getElementById('acard-' + firingAlarm.id);
-    if (card) card.classList.remove('firing');
-  }
+  document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('firing'));
   firingAlarm = null;
-  // reset so the same minute won't immediately re-fire
-  lastCheckedMin = new Date().getHours() * 60 + new Date().getMinutes();
 }
 
 function snoozeAlarm() {
-  const a = firingAlarm;
-  stopAlarm();
+  const a = firingAlarm; stopAlarm();
   if (!a) return;
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + snoozeMin);
   setTimeout(() => fireAlarm(a), snoozeMin * 60 * 1000);
-  showSnack(snoozeMin + '分後に再アラーム');
+  showSnack(`${snoozeMin}分後に再通知します`);
 }
 
-// ───────────────────────────────────────────
-// AUDIO
-// ───────────────────────────────────────────
-function startAudio(a) {
-  stopAudio();
-  if (a.sound === 'music' && musicStore[a.id]?.data) {
-    firingAudio = new Audio(musicStore[a.id].data);
-    firingAudio.loop = true;
-    firingAudio.play().catch(() => startBeepLoop(a.sound));
-  } else {
-    startBeepLoop(a.sound || 'beep');
-  }
-}
-
-function startBeepLoop(type) {
-  firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-  function loop() {
-    if (!firingAlarm) return;
-    const dur = playTones(firingCtx, type, 8);
-    loopTimer = setTimeout(loop, (dur + 0.5) * 1000);
-  }
-  loop();
-}
-
-function playTones(ctx, type, seconds) {
-  const pats = {
-    beep: [{ f: 880, d: .18, g: .3 }, { f: 880, d: .18, g: .3 }],
-    gentle: [{ f: 523, d: .32, g: .22 }, { f: 659, d: .32, g: .22 }, { f: 784, d: .32, g: .22 }],
-    urgent: [{ f: 1200, d: .1, g: .32 }, { f: 900, d: .1, g: .32 }, { f: 1200, d: .1, g: .32 }, { f: 800, d: .1, g: .32 }]
-  };
-  const pat = pats[type] || pats.beep;
-  let t = ctx.currentTime, end = t + seconds;
-  while (t < end) {
-    for (const p of pat) {
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = p.f;
-      osc.type = type === 'urgent' ? 'sawtooth' : 'sine';
-      gain.gain.setValueAtTime(p.g, t);
-      gain.gain.exponentialRampToValueAtTime(.001, t + p.d);
-      osc.start(t); osc.stop(t + p.d + .01);
-      t += p.d + .08;
+function playTones(ctx, type, reps) {
+  for (let r = 0; r < reps; r++) {
+    const offset = r * 0.6;
+    if (type === 'gentle') {
+      [523, 659].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination); o.type = 'sine'; o.frequency.value = f;
+        const t = ctx.currentTime + offset + i * 0.2;
+        g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        o.start(t); o.stop(t + 0.41);
+      });
+    } else if (type === 'urgent') {
+      for (let i = 0; i < 4; i++) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination); o.type = 'sawtooth'; o.frequency.value = 880;
+        const t = ctx.currentTime + offset + i * 0.12;
+        g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        o.start(t); o.stop(t + 0.11);
+      }
+    } else {
+      [880, 1100].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination); o.frequency.value = f;
+        const t = ctx.currentTime + offset + i * 0.18;
+        g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        o.start(t); o.stop(t + 0.16);
+      });
     }
-    t += .28;
   }
-  return t - ctx.currentTime;
-}
-
-function stopAudio() {
-  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  if (firingAudio) { try { firingAudio.pause(); } catch (e) {} firingAudio = null; }
-  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
 }
 
 // ───────────────────────────────────────────
@@ -1164,46 +1482,25 @@ async function fetchHolidays() {
   btn.textContent = '取得中…'; btn.disabled = true;
   try {
     const res = await fetch('https://holidays-jp.github.io/api/v1/date.json');
-    if (!res.ok) throw new Error();
     holidays = await res.json();
-    showSnack(Object.keys(holidays).length + '件の祝日を取得しました');
+    saveData(); updateHolidayStatus(); renderCalendar();
+    showSnack(`${Object.keys(holidays).length}件の祝日を取得しました`);
   } catch (e) {
-    holidays = builtinHolidays();
-    showSnack('オフラインデータ（' + Object.keys(holidays).length + '件）を使用');
+    showSnack('取得に失敗しました');
   }
-  saveData(); renderCalendar(); updateHolidayStatus();
-  btn.textContent = '再取得'; btn.disabled = false;
+  btn.textContent = '取得'; btn.disabled = false;
 }
 
 function resetHolidays() {
-  if (!confirm('祝日データを削除しますか？')) return;
-  holidays = {}; saveData(); renderCalendar(); updateHolidayStatus();
-  showSnack('削除しました');
+  if (!confirm('祝日データをリセットしますか？')) return;
+  holidays = {}; saveData(); updateHolidayStatus(); renderCalendar();
+  showSnack('祝日データを削除しました');
 }
 
 function updateHolidayStatus() {
-  const n = Object.keys(holidays).length;
-  document.getElementById('holiday-status').textContent = n ? `✓ ${n}件の祝日データを保持中` : '祝日データなし';
-}
-
-function builtinHolidays() {
-  return {
-    "2024-01-01":"元日","2024-01-08":"成人の日","2024-02-11":"建国記念の日","2024-02-12":"振替休日",
-    "2024-02-23":"天皇誕生日","2024-03-20":"春分の日","2024-04-29":"昭和の日","2024-05-03":"憲法記念日",
-    "2024-05-04":"みどりの日","2024-05-05":"こどもの日","2024-05-06":"振替休日","2024-07-15":"海の日",
-    "2024-08-11":"山の日","2024-08-12":"振替休日","2024-09-16":"敬老の日","2024-09-22":"秋分の日",
-    "2024-09-23":"振替休日","2024-10-14":"スポーツの日","2024-11-03":"文化の日","2024-11-04":"振替休日",
-    "2024-11-23":"勤労感謝の日",
-    "2025-01-01":"元日","2025-01-13":"成人の日","2025-02-11":"建国記念の日","2025-02-23":"天皇誕生日",
-    "2025-02-24":"振替休日","2025-03-20":"春分の日","2025-04-29":"昭和の日","2025-05-03":"憲法記念日",
-    "2025-05-04":"みどりの日","2025-05-05":"こどもの日","2025-05-06":"振替休日","2025-07-21":"海の日",
-    "2025-08-11":"山の日","2025-09-15":"敬老の日","2025-09-23":"秋分の日","2025-10-13":"スポーツの日",
-    "2025-11-03":"文化の日","2025-11-23":"勤労感謝の日","2025-11-24":"振替休日",
-    "2026-01-01":"元日","2026-01-12":"成人の日","2026-02-11":"建国記念の日","2026-02-23":"天皇誕生日",
-    "2026-03-20":"春分の日","2026-04-29":"昭和の日","2026-05-03":"憲法記念日","2026-05-04":"みどりの日",
-    "2026-05-05":"こどもの日","2026-07-20":"海の日","2026-08-11":"山の日","2026-09-21":"敬老の日",
-    "2026-09-23":"秋分の日","2026-10-12":"スポーツの日","2026-11-03":"文化の日","2026-11-23":"勤労感謝の日"
-  };
+  const el = document.getElementById('holiday-status');
+  const cnt = Object.keys(holidays).length;
+  el.textContent = cnt ? `${cnt}件の祝日データを読込済み` : '';
 }
 
 // ───────────────────────────────────────────
@@ -1249,8 +1546,24 @@ function saveSnooze() {
   saveData();
 }
 
+function saveGasUrl() {
+  const url = document.getElementById('gas-url-input').value.trim();
+  const groups = loadGroups();
+  const gid = getCurrentGroupId();
+  const g = groups.find(g => g.id === gid);
+  if (g) { g.gasUrl = url; saveGroups(groups); }
+  renderGroupName();
+  if (url) {
+    showSnack('GAS URLを保存しました。同期中…');
+    syncFromRemote();
+  } else {
+    setSyncDot('off');
+    showSnack('GAS URLを削除しました');
+  }
+}
+
 function exportData() {
-  const blob = new Blob([JSON.stringify({ alarms, holidays, overrides, snoozeMin, v: 2 }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ alarms, holidays, overrides, snoozeMin, timerPresets, v: 4 }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `smart-alarm-${fmtDate(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate())}.json`;
@@ -1267,7 +1580,8 @@ function importData(e) {
       if (d.holidays) holidays = d.holidays;
       if (d.overrides) overrides = d.overrides;
       if (d.snoozeMin) { snoozeMin = d.snoozeMin; document.getElementById('snooze-sel').value = snoozeMin; }
-      saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateHolidayStatus();
+      if (d.timerPresets) timerPresets = d.timerPresets;
+      saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateHolidayStatus(); renderTimerList();
       showSnack('インポートしました');
     } catch (err) { showSnack('読込みに失敗しました'); }
   };
@@ -1275,108 +1589,387 @@ function importData(e) {
 }
 
 // ───────────────────────────────────────────
-// UTILS
+// GROUP / USER MANAGEMENT
 // ───────────────────────────────────────────
-function pad(n) { return String(n).padStart(2, '0'); }
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
-function fmtDate(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
-function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-function showSnack(msg) {
-  const el = document.getElementById('snackbar');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
+function openGroupSheet() {
+  renderGroupSheet();
+  document.getElementById('group-sheet').classList.add('open');
+}
+function closeGroupSheet() { document.getElementById('group-sheet').classList.remove('open'); }
+
+function renderGroupSheet() {
+  renderGroupList();
+  renderUserList();
+  renderCopyUserSection();
+  const gid = getCurrentGroupId();
+  const groups = loadGroups();
+  const g = groups.find(g => g.id === gid);
+  const inp = document.getElementById('group-gas-url-input');
+  if (inp) inp.value = g ? (g.gasUrl || '') : '';
 }
 
-// ───────────────────────────────────────────
-// TIMER
-// ───────────────────────────────────────────
-const DEFAULT_PHASES = [
-  { name:'前歯', sec:20, announce:'前歯を磨きます。20秒' },
-  { name:'右奥・外側', sec:20, announce:'右奥の外側を磨きます。20秒' },
-  { name:'右奥・内側', sec:20, announce:'右奥の内側を磨きます。20秒' },
-  { name:'左奥・外側', sec:20, announce:'左奥の外側を磨きます。20秒' },
-  { name:'左奥・内側', sec:20, announce:'左奥の内側を磨きます。20秒' },
-  { name:'仕上げ（全体）', sec:30, announce:'仕上げです。全体をていねいに磨きます。30秒' },
-];
-let timerPhases = [];
-let timerState = 'idle';   // idle | running | paused
-let timerPhaseIdx = 0;
-let timerRemain = 0;       // 現在フェーズの残り秒
-let timerInterval = null;
-let timerTotalElapsed = 0;
-let timerTotalSec = 0;
-
-function loadTimerPhases() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('sa_timer_phases') || 'null');
-    timerPhases = saved && saved.length ? saved : JSON.parse(JSON.stringify(DEFAULT_PHASES));
-  } catch(e) { timerPhases = JSON.parse(JSON.stringify(DEFAULT_PHASES)); }
-}
-function saveTimerPhases() {
-  localStorage.setItem('sa_timer_phases', JSON.stringify(timerPhases));
-}
-
-function renderPhaseList() {
-  const el = document.getElementById('phase-list');
-  el.innerHTML = timerPhases.map((p,i) => `
-    <div class="phase-item" data-i="${i}">
-      <div class="phase-item-top">
-        <span class="phase-drag">⠿</span>
-        <input class="phase-name-input" value="${esc(p.name)}" placeholder="ステップ名"
-          oninput="timerPhases[${i}].name=this.value;saveTimerPhases();renderPhaseOverview()">
-        <span class="phase-sep">:</span>
-        <input class="phase-sec-input" type="number" min="1" max="999" value="${p.sec}"
-          oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveTimerPhases();updateTimerTotals()">
-        <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
-        <button class="phase-del" onclick="deletePhase(${i})">✕</button>
+function renderGroupList() {
+  const el = document.getElementById('group-list-el');
+  if (!el) return;
+  const groups = loadGroups();
+  const curId = getCurrentGroupId();
+  el.innerHTML = groups.map(g => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1.5px solid ${g.id === curId ? 'var(--accent)' : 'var(--border2)'};background:var(--surface2);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);">${esc(g.name)}${g.id === curId ? ' <span style="font-size:10px;background:var(--accent-l);color:var(--accent);border-radius:4px;padding:1px 5px;">使用中</span>' : ''}</div>
+        ${g.gasUrl ? '<div style="font-size:10px;color:var(--blue);margin-top:1px;">🔗 GAS連携あり</div>' : ''}
       </div>
-      <div class="phase-item-bottom">
-        <span class="phase-announce-label">アナウンス:</span>
-        <input class="phase-announce-input" value="${esc(p.announce||'')}" placeholder="省略時はステップ名を読み上げ"
-          oninput="timerPhases[${i}].announce=this.value;saveTimerPhases()">
-      </div>
+      ${g.id !== curId ? `<button class="settings-btn" onclick="switchGroup('${g.id}')">切替</button>` : ''}
+      ${groups.length > 1 ? `<button class="settings-btn" style="color:var(--red);" onclick="deleteGroup('${g.id}')">削除</button>` : ''}
     </div>`).join('');
 }
 
-function addPhase() {
-  timerPhases.push({ name:'新しいステップ', sec:20 });
-  saveTimerPhases(); renderPhaseList(); renderPhaseOverview();
-}
-function deletePhase(i) {
-  timerPhases.splice(i,1);
-  saveTimerPhases(); renderPhaseList(); renderPhaseOverview();
-}
-
-function updateTimerTotals() {
-  timerTotalSec = timerPhases.reduce((s,p)=>s+p.sec, 0);
-  renderPhaseOverview();
-}
-
-function renderPhaseOverview() {
-  timerTotalSec = timerPhases.reduce((s,p)=>s+p.sec, 0);
-  const el = document.getElementById('timer-phase-overview');
+function renderUserList() {
+  const el = document.getElementById('user-list-el');
   if (!el) return;
-  el.innerHTML = timerPhases.map((p,i) => {
-    let cls = 'tpo-item';
-    if (timerState!=='idle' && i===timerPhaseIdx) cls+=' active';
-    else if (timerState!=='idle' && i<timerPhaseIdx) cls+=' done';
-    return `<div class="${cls}">
-      <span class="tpo-num">${i+1}</span>
-      <span class="tpo-name">${esc(p.name)}</span>
-      <span class="tpo-dur">${p.sec}秒</span>
+  const d = getGroupCache();
+  const curUid = getCurrentUserId();
+  el.innerHTML = (d.users || []).map(u => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1.5px solid ${u.id === curUid ? 'var(--accent)' : 'var(--border2)'};background:var(--surface2);">
+      <div style="flex:1;font-size:13px;color:var(--text);">${esc(u.name)}${u.id === curUid ? ' <span style="font-size:10px;background:var(--accent-l);color:var(--accent);border-radius:4px;padding:1px 5px;">使用中</span>' : ''}</div>
+      ${u.id !== curUid ? `<button class="settings-btn" onclick="switchUser('${u.id}')">切替</button>` : ''}
+      ${(d.users || []).length > 1 ? `<button class="settings-btn" style="color:var(--red);" onclick="deleteUser('${u.id}')">削除</button>` : ''}
+    </div>`).join('');
+}
+
+function renderCopyUserSection() {
+  const el = document.getElementById('copy-user-section');
+  if (!el) return;
+  const d = getGroupCache();
+  const curUid = getCurrentUserId();
+  const curUser = d.users.find(u => u.id === curUid);
+  if (!curUser) { el.innerHTML = ''; return; }
+
+  const groups = loadGroups();
+  const groupOptions = groups.map(g => {
+    const isCurrent = g.id === getCurrentGroupId();
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);margin-bottom:6px;cursor:pointer;">
+      <input type="radio" name="cup-dest" value="${esc(g.id)}" ${isCurrent ? 'checked' : ''} style="accent-color:var(--accent);">
+      <div style="flex:1;font-size:13px;color:var(--text);">${esc(g.name)}${isCurrent ? ' <span style="font-size:10px;background:var(--accent-l);color:var(--accent);border-radius:4px;padding:1px 5px;">現在</span>' : ''}</div>
+    </label>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">コピー元: <b style="color:var(--text);">${esc(curUser.name)}</b></div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">① コピー先グループ</div>
+      <div style="margin-bottom:10px;">${groupOptions}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">② 新しいユーザー名</div>
+      <input id="cup-name" type="text" class="form-input" style="height:40px;font-size:14px;margin-bottom:10px;" value="${esc(curUser.name)}のコピー">
+      <button class="btn-primary" style="padding:10px;" onclick="executeCopyUser()">コピーして作成</button>
+    </div>`;
+}
+
+function addGroup() {
+  const input = document.getElementById('new-group-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const groups = loadGroups();
+  const id = 'g' + Date.now();
+  groups.push({ id, name, gasUrl: '' });
+  saveGroups(groups);
+  input.value = '';
+  renderGroupList();
+  showSnack('グループを追加しました');
+}
+
+function deleteGroup(id) {
+  const groups = loadGroups();
+  if (groups.length <= 1) { showSnack('最後のグループは削除できません'); return; }
+  if (!confirm('このグループを削除しますか？（データも削除されます）')) return;
+  const newGroups = groups.filter(g => g.id !== id);
+  saveGroups(newGroups);
+  localStorage.removeItem(groupDataKey(id));
+  if (getCurrentGroupId() === id) {
+    setCurrentGroupId(newGroups[0].id);
+    resetGroupCache();
+    loadUserData();
+  }
+  renderGroupSheet();
+  renderGroupName();
+  showSnack('グループを削除しました');
+}
+
+function switchGroup(id) {
+  // 現在のデータを保存してから切替
+  saveUserData();
+  setCurrentGroupId(id);
+  resetGroupCache();
+  loadUserData();
+  renderGroupSheet();
+  renderGroupName();
+  renderAlarms();
+  renderCalAlarmList();
+  renderCalendar();
+  renderTimerList();
+  updateNextInfo();
+  showSnack('グループを切り替えました');
+}
+
+function addUser() {
+  const input = document.getElementById('new-user-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const d = getGroupCache();
+  const id = 'u' + Date.now();
+  d.users.push({ id, name });
+  setGroupCache(d);
+  input.value = '';
+  renderUserList();
+  renderCopyUserSection();
+  if (getGasUrl()) pushToRemote();
+  showSnack('ユーザーを追加しました');
+}
+
+function deleteUser(id) {
+  const d = getGroupCache();
+  if ((d.users || []).length <= 1) { showSnack('最後のユーザーは削除できません'); return; }
+  if (!confirm('このユーザーを削除しますか？')) return;
+  d.users = d.users.filter(u => u.id !== id);
+  if (!d.deletedUsers) d.deletedUsers = [];
+  d.deletedUsers.push({ id });
+  if (d.currentUserId === id) {
+    d.currentUserId = d.users[0]?.id || '';
+  }
+  setGroupCache(d);
+  if (d.currentUserId !== getCurrentUserId()) {
+    loadUserData();
+    renderAlarms();
+  }
+  renderUserList();
+  renderCopyUserSection();
+  if (getGasUrl()) pushToRemote();
+  showSnack('ユーザーを削除しました');
+}
+
+function switchUser(id) {
+  saveUserData();
+  setCurrentUserId(id);
+  loadUserData();
+  renderGroupSheet();
+  renderGroupName();
+  renderAlarms();
+  renderCalAlarmList();
+  renderCalendar();
+  renderTimerList();
+  updateNextInfo();
+  showSnack('ユーザーを切り替えました');
+}
+
+function executeCopyUser() {
+  const nameInput = document.getElementById('cup-name');
+  if (!nameInput) return;
+  const newName = nameInput.value.trim();
+  if (!newName) { showSnack('ユーザー名を入力してください'); return; }
+
+  const destGroupId = document.querySelector('input[name="cup-dest"]:checked')?.value;
+  if (!destGroupId) return;
+
+  const curUser = getGroupCache().users.find(u => u.id === getCurrentUserId());
+  if (!curUser) return;
+
+  const newId = 'u' + Date.now();
+  const newUser = {
+    id: newId,
+    name: newName,
+    alarms: JSON.parse(JSON.stringify(curUser.alarms || [])),
+    holidays: JSON.parse(JSON.stringify(curUser.holidays || {})),
+    overrides: JSON.parse(JSON.stringify(curUser.overrides || {})),
+    snoozeMin: curUser.snoozeMin || 10,
+    timerPresets: JSON.parse(JSON.stringify(curUser.timerPresets || [])),
+  };
+
+  if (destGroupId === getCurrentGroupId()) {
+    const d = getGroupCache();
+    if (d.users.find(u => u.name === newName)) { showSnack('同じ名前のユーザーが存在します'); return; }
+    d.users.push(newUser);
+    setGroupCache(d);
+    renderGroupSheet();
+    if (getGasUrl()) pushToRemote();
+    showSnack(`「${newName}」を作成しました`);
+  } else {
+    // 別グループへのコピー
+    let destData = loadGroupData(destGroupId);
+    if (!destData || !destData.users) {
+      destData = { currentUserId: newId, users: [], deletedUsers: [] };
+    }
+    if (destData.users.find(u => u.name === newName)) { showSnack('コピー先に同じ名前のユーザーが存在します'); return; }
+    destData.users.push(newUser);
+    saveGroupData(destData, destGroupId);
+    // コピー先にGASがあれば同期
+    const destGroup = loadGroups().find(g => g.id === destGroupId);
+    if (destGroup && destGroup.gasUrl) {
+      const dataToSave = { ...destData, groupName: destGroup.name };
+      fetch(destGroup.gasUrl, { method: 'POST', body: JSON.stringify(dataToSave) }).catch(() => {});
+    }
+    showSnack(`「${newName}」を${destGroup?.name || 'グループ'}に作成しました`);
+  }
+}
+
+function saveGroupGasUrl() {
+  const url = document.getElementById('group-gas-url-input').value.trim();
+  const groups = loadGroups();
+  const gid = getCurrentGroupId();
+  const g = groups.find(g => g.id === gid);
+  if (g) { g.gasUrl = url; saveGroups(groups); }
+  renderGroupName();
+  document.getElementById('gas-url-input').value = url;
+  renderGroupSheet();
+  if (url) { showSnack('GAS URLを保存しました。同期中…'); syncFromRemote(); }
+  else { setSyncDot('off'); showSnack('GAS URLを削除しました'); }
+}
+
+// ───────────────────────────────────────────
+// TIMER PRESETS LIST
+// ───────────────────────────────────────────
+function renderTimerList() {
+  const el = document.getElementById('timer-card-list');
+  if (!el) return;
+  if (!timerPresets.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏱️</div>タイマーがありません<br>下の「タイマーを追加」から作成してください</div>`;
+    return;
+  }
+  el.innerHTML = timerPresets.map(p => {
+    const totalSec = (p.phases || []).reduce((s, ph) => s + ph.sec, 0);
+    const steps = (p.phases || []).length;
+    return `<div class="timer-list-card" onclick="openTimerDetail('${p.id}')">
+      <div class="timer-list-card-info">
+        <div class="timer-list-card-name">${esc(p.name)}</div>
+        <div class="timer-list-card-sub">${steps}ステップ・合計${fmtSec(totalSec)}</div>
+      </div>
+      <div class="timer-list-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn del" onclick="deleteTimerPreset('${p.id}')">✕</button>
+      </div>
+      <div class="timer-list-card-arrow">›</div>
     </div>`;
   }).join('');
-  const info = document.getElementById('timer-total-info');
-  if (info) info.textContent = `合計 ${fmtSec(timerTotalSec)}`;
 }
 
+function addTimerPreset() {
+  const name = prompt('タイマー名を入力してください', '新しいタイマー');
+  if (!name) return;
+  const id = 'tp' + Date.now();
+  timerPresets.push({ id, name: name.trim(), phases: [] });
+  saveData();
+  renderTimerList();
+  openTimerDetail(id);
+}
+
+function deleteTimerPreset(id) {
+  if (!confirm('このタイマーを削除しますか？')) return;
+  timerPresets = timerPresets.filter(p => p.id !== id);
+  if (currentTimerPresetId === id) {
+    currentTimerPresetId = null;
+    timerPhases = [];
+  }
+  saveData();
+  renderTimerList();
+}
+
+function openTimerDetail(id) {
+  // タイマー実行中なら止める
+  if (timerState !== 'idle') timerReset();
+
+  currentTimerPresetId = id;
+  const preset = timerPresets.find(p => p.id === id);
+  if (!preset) return;
+  timerPhases = JSON.parse(JSON.stringify(preset.phases || []));
+
+  document.getElementById('timer-detail-title').textContent = preset.name;
+  document.getElementById('timer-list-view').style.display = 'none';
+  document.getElementById('timer-detail-view').style.display = '';
+  renderPhaseList();
+  timerUpdateDisplay();
+}
+
+function showTimerList() {
+  if (timerState !== 'idle') timerReset();
+  document.getElementById('timer-list-view').style.display = '';
+  document.getElementById('timer-detail-view').style.display = 'none';
+  currentTimerPresetId = null;
+  renderTimerList();
+}
+
+function saveCurrentPresetPhases() {
+  if (!currentTimerPresetId) return;
+  const p = timerPresets.find(p => p.id === currentTimerPresetId);
+  if (p) {
+    p.phases = JSON.parse(JSON.stringify(timerPhases));
+    saveData();
+  }
+}
+
+// ───────────────────────────────────────────
+// TIMER PHASE EDIT
+// ───────────────────────────────────────────
+function renderPhaseList() {
+  const el = document.getElementById('phase-list');
+  if (!el) return;
+  el.innerHTML = timerPhases.map((p, i) => `
+    <div class="phase-item" data-i="${i}">
+      <div class="phase-item-top">
+        <span class="phase-drag">⠿</span>
+        <div class="phase-sec-wrap">
+          <div class="phase-sec-spin-col">
+            <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},1)">▲</button>
+            <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},-1)">▼</button>
+          </div>
+          <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
+            oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();">
+          <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
+        </div>
+        <button class="phase-del" onclick="deletePhase(${i})">✕</button>
+      </div>
+      <input class="phase-announce-input" value="${esc(p.announce || '')}"
+        placeholder="アナウンスを入力（例: 前歯を磨きます）"
+        oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();">
+    </div>`).join('');
+}
+
+function spinPhaseSec(i, delta) {
+  let v = timerPhases[i].sec + delta;
+  if (v < 1) v = 1;
+  if (v > 9999) v = 9999;
+  timerPhases[i].sec = v;
+  saveCurrentPresetPhases();
+  renderPhaseList();
+  timerUpdateDisplay();
+}
+
+function addPhase() {
+  timerPhases.push({ sec: 30, announce: '' });
+  saveCurrentPresetPhases();
+  renderPhaseList();
+  timerUpdateDisplay();
+  // 追加したステップのアナウンス欄にフォーカス
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.phase-announce-input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function deletePhase(i) {
+  timerPhases.splice(i, 1);
+  saveCurrentPresetPhases();
+  renderPhaseList();
+  timerUpdateDisplay();
+}
+
+// ───────────────────────────────────────────
+// TIMER LOGIC
+// ───────────────────────────────────────────
 function fmtSec(s) {
-  const m = Math.floor(s/60), r = s%60;
-  return m>0 ? `${m}分${r>0?r+'秒':''}` : `${s}秒`;
+  const m = Math.floor(s / 60), r = s % 60;
+  return m > 0 ? `${m}分${r > 0 ? r + '秒' : ''}` : `${s}秒`;
 }
 function fmtCountdown(s) {
-  const m = Math.floor(s/60), r = s%60;
-  return pad(m)+':'+pad(r);
+  const m = Math.floor(s / 60), r = s % 60;
+  return pad(m) + ':' + pad(r);
 }
 
 function timerStartStop() {
@@ -1384,7 +1977,7 @@ function timerStartStop() {
     if (!timerPhases.length) { showSnack('ステップを追加してください'); return; }
     timerPhaseIdx = 0;
     timerTotalElapsed = 0;
-    timerTotalSec = timerPhases.reduce((s,p)=>s+p.sec,0);
+    timerTotalSec = timerPhases.reduce((s, p) => s + p.sec, 0);
     timerRemain = timerPhases[0].sec;
     timerState = 'running';
     announcePhase(0);
@@ -1400,7 +1993,6 @@ function timerStartStop() {
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   }
   timerUpdateDisplay();
-  renderPhaseOverview();
 }
 
 function timerTick() {
@@ -1414,9 +2006,7 @@ function timerTick() {
     timerRemain = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
-    renderPhaseOverview();
   } else {
-    // フェーズ間のカウントダウン音（毎秒）
     playCountdownTick();
   }
   timerUpdateDisplay();
@@ -1426,13 +2016,17 @@ function timerUpdateDisplay() {
   const timeEl = document.getElementById('timer-time');
   const nameEl = document.getElementById('timer-phase-name');
   const progEl = document.getElementById('timer-phase-progress');
-  const barEl  = document.getElementById('timer-total-bar');
+  const barEl = document.getElementById('timer-total-bar');
+  const totalInfo = document.getElementById('timer-total-info');
   if (!timeEl) return;
+
+  timerTotalSec = timerPhases.reduce((s, p) => s + p.sec, 0);
+  if (totalInfo) totalInfo.textContent = `合計 ${fmtSec(timerTotalSec)}`;
 
   if (timerState === 'idle') {
     timeEl.textContent = fmtCountdown(timerPhases[0]?.sec || 0);
     timeEl.classList.remove('warning');
-    nameEl.textContent = 'スタートを押してください';
+    nameEl.textContent = timerPhases[0]?.announce?.trim() || 'スタートを押してください';
     progEl.textContent = '';
     barEl.style.width = '0%';
     return;
@@ -1440,12 +2034,11 @@ function timerUpdateDisplay() {
   const phase = timerPhases[timerPhaseIdx];
   timeEl.textContent = fmtCountdown(timerRemain);
   timeEl.classList.toggle('warning', timerRemain <= 5);
-  nameEl.textContent = phase.name;
-  const phaseElapsed = phase.sec - timerRemain;
-  progEl.textContent = `ステップ ${timerPhaseIdx+1}/${timerPhases.length}　残り ${timerRemain}秒`;
+  nameEl.textContent = phase.announce?.trim() || `ステップ ${timerPhaseIdx + 1}`;
+  progEl.textContent = `ステップ ${timerPhaseIdx + 1}/${timerPhases.length}　残り ${timerRemain}秒`;
   const pct = Math.min(100, (timerTotalElapsed / timerTotalSec) * 100);
-  barEl.style.width = pct+'%';
-  barEl.style.background = timerRemain<=5 ? 'var(--red)' : 'var(--accent)';
+  barEl.style.width = pct + '%';
+  barEl.style.background = timerRemain <= 5 ? 'var(--red)' : 'var(--accent)';
 }
 
 function timerFinish() {
@@ -1454,16 +2047,14 @@ function timerFinish() {
   const timeEl = document.getElementById('timer-time');
   const nameEl = document.getElementById('timer-phase-name');
   const progEl = document.getElementById('timer-phase-progress');
-  const barEl  = document.getElementById('timer-total-bar');
+  const barEl = document.getElementById('timer-total-bar');
   if (timeEl) { timeEl.textContent = '完了！'; timeEl.classList.remove('warning'); }
-  if (nameEl) nameEl.textContent = '歯磨き完了🎉';
+  if (nameEl) nameEl.textContent = '完了🎉';
   if (progEl) progEl.textContent = `合計 ${fmtSec(timerTotalSec)}`;
-  if (barEl) { barEl.style.width='100%'; barEl.style.background='var(--green)'; }
+  if (barEl) { barEl.style.width = '100%'; barEl.style.background = 'var(--green)'; }
   document.getElementById('timer-start-btn').textContent = '▶ スタート';
-  // 完了アナウンス
-  speak('歯磨き完了です。よくできました！');
+  speak('タイマー完了です！');
   playBeep('finish');
-  renderPhaseOverview();
 }
 
 function timerReset() {
@@ -1473,23 +2064,21 @@ function timerReset() {
   timerTotalElapsed = 0;
   document.getElementById('timer-start-btn').textContent = '▶ スタート';
   timerUpdateDisplay();
-  renderPhaseOverview();
 }
 
 // ── アナウンス ──
 function announcePhase(idx) {
   const p = timerPhases[idx];
   if (!p) return;
-  // announce フィールドがあればそれを、なければデフォルト文を使用
   const msg = p.announce && p.announce.trim()
     ? p.announce.trim()
-    : `${p.name}を${p.sec}秒磨きます。`;
+    : `ステップ ${idx + 1}`;
   speak(msg);
 }
 
-// カウントダウン音（残り秒が指定秒以下で毎秒鳴らす）
+// カウントダウン音（announce-tick スイッチで制御）
 function playCountdownTick() {
-  if (!document.getElementById('announce-beep')?.checked) return;
+  if (!document.getElementById('announce-tick')?.checked) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -1499,7 +2088,7 @@ function playCountdownTick() {
     g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .08);
     o.start(ctx.currentTime); o.stop(ctx.currentTime + .09);
     setTimeout(() => ctx.close(), 200);
-  } catch(e){}
+  } catch (e) {}
 }
 
 function speak(text) {
@@ -1519,32 +2108,34 @@ function playBeep(type = 'phase') {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (type === 'finish') {
-      [523,659,784,1047].forEach((f,i) => {
-        const o=ctx.createOscillator(), g=ctx.createGain();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
-        o.frequency.value=f; o.type='sine';
-        const t=ctx.currentTime+i*0.18;
-        g.gain.setValueAtTime(.28,t);
-        g.gain.exponentialRampToValueAtTime(.001,t+.25);
-        o.start(t); o.stop(t+.26);
+        o.frequency.value = f; o.type = 'sine';
+        const t = ctx.currentTime + i * 0.18;
+        g.gain.setValueAtTime(.28, t);
+        g.gain.exponentialRampToValueAtTime(.001, t + .25);
+        o.start(t); o.stop(t + .26);
       });
-      setTimeout(()=>ctx.close(),1200);
+      setTimeout(() => ctx.close(), 1200);
     } else {
-      [880,1100].forEach((f,i)=>{
-        const o=ctx.createOscillator(),g=ctx.createGain();
-        o.connect(g);g.connect(ctx.destination);
-        o.frequency.value=f;
-        const t=ctx.currentTime+i*0.18;
-        g.gain.setValueAtTime(.3,t);
-        g.gain.exponentialRampToValueAtTime(.001,t+.15);
-        o.start(t);o.stop(t+.16);
+      [880, 1100].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f;
+        const t = ctx.currentTime + i * 0.18;
+        g.gain.setValueAtTime(.3, t);
+        g.gain.exponentialRampToValueAtTime(.001, t + .15);
+        o.start(t); o.stop(t + .16);
       });
-      setTimeout(()=>ctx.close(),600);
+      setTimeout(() => ctx.close(), 600);
     }
-  } catch(e){}
+  } catch (e) {}
 }
 
-// ── PWAインストール・キャッシュ ──
+// ───────────────────────────────────────────
+// PWA
+// ───────────────────────────────────────────
 let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
@@ -1572,6 +2163,19 @@ function clearCacheAndReload() {
         } else { location.reload(true); }
       });
   } else { location.reload(true); }
+}
+
+// ───────────────────────────────────────────
+// UTILS
+// ───────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+function fmtDate(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function showSnack(msg) {
+  const el = document.getElementById('snackbar');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 init();
