@@ -1,9 +1,5 @@
-const CACHE_NAME = 'smart-alarm-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json'
-];
+const CACHE_NAME = 'smart-alarm-v4';
+const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -16,27 +12,28 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// ネットワーク優先（更新を即反映）→ 失敗時はキャッシュ
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(event.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 
-// アラーム通知（バックグラウンド）
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(clientList => {
-      if (clientList.length > 0) {
-        clientList[0].focus();
-      } else {
-        clients.openWindow('./');
-      }
-    })
+    clients.matchAll({ type: 'window' }).then(list =>
+      list.length ? list[0].focus() : clients.openWindow('./')
+    )
   );
 });
