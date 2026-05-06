@@ -29,7 +29,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .app-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
 .app-title{font-size:18px;font-weight:700;letter-spacing:-.3px;}
 .app-title span{color:var(--accent);}
-.header-clock{font-family:var(--mono);font-size:20px;color:var(--text2);}
+.header-clock{font-family:var(--mono);font-size:13px;color:var(--text2);}
 
 /* TABS */
 .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:53px;z-index:49;}
@@ -93,10 +93,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .cal-ai-status{font-size:11px;color:var(--text3);}
 .cal-hint{font-size:11px;color:var(--text3);padding:6px 2px 10px;line-height:1.7;}
 
-.cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.cal-month-label{font-size:16px;font-weight:700;}
-.cal-nav-btns{display:flex;gap:4px;}
-.cal-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
+.cal-month-label{font-size:16px;font-weight:700;text-align:center;flex:1;}
+.cal-nav-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
 .cal-nav-btn:active{background:var(--surface3);}
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px;}
 .cal-dow-cell{text-align:center;font-size:11px;color:var(--text3);padding:4px 0;}
@@ -150,11 +149,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* TIME INPUT */
 .time-kb-wrap{display:flex;align-items:center;gap:10px;}
-.time-digits{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);overflow:hidden;transition:border-color .15s;}
-.time-digits:focus-within{border-color:var(--accent);}
-.time-digit{width:58px;height:54px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;}
+.time-spinners{display:flex;align-items:center;gap:4px;}
+.time-spin-unit{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.time-spin-btn{width:50px;height:28px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text2);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;}
+.time-spin-btn:active{background:var(--surface3);color:var(--text);}
+.time-digit-box{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);transition:border-color .15s;}
+.time-digit-box:focus-within{border-color:var(--accent);}
+.time-digit{width:54px;height:52px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;cursor:pointer;}
 .time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
-.time-colon{font-family:var(--mono);font-size:28px;color:var(--text2);user-select:none;padding:0 1px;}
+.time-colon{font-family:var(--mono);font-size:26px;color:var(--text2);user-select:none;padding:0 2px;}
 .time-hint{font-size:11px;color:var(--text3);margin-top:5px;}
 .btn-mode-toggle{padding:7px 11px;border:1px solid var(--border2);border-radius:8px;background:var(--surface3);color:var(--text3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .btn-mode-toggle:active{color:var(--text2);}
@@ -227,6 +230,45 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 /* SNACKBAR */
 .snackbar{position:fixed;bottom:80px;left:16px;right:16px;background:var(--surface3);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text);z-index:400;transform:translateY(6px);opacity:0;transition:all .22s;pointer-events:none;}
 .snackbar.show{transform:translateY(0);opacity:1;}
+
+/* TIMER */
+.phase-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.phase-item{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+.phase-drag{color:var(--text3);font-size:18px;cursor:grab;padding:0 2px;touch-action:none;}
+.phase-name-input{flex:1;border:none;outline:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text);min-width:0;}
+.phase-name-input::placeholder{color:var(--text3);}
+.phase-sep{color:var(--text3);font-size:12px;flex-shrink:0;}
+.phase-sec-input{width:52px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--mono);font-size:14px;color:var(--text);text-align:center;padding:4px 0;outline:none;}
+.phase-sec-input:focus{border-color:var(--accent);}
+.phase-del{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;}
+.phase-del:active{color:var(--red);}
+.btn-add-phase{width:100%;padding:11px;border-radius:12px;border:1.5px dashed var(--border2);background:transparent;color:var(--text3);font-family:var(--font);font-size:13px;cursor:pointer;transition:border-color .12s,color .12s;}
+.btn-add-phase:active{border-color:var(--accent);color:var(--accent);}
+
+.timer-display-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px 20px 20px;text-align:center;margin-top:16px;}
+.timer-phase-name{font-size:16px;font-weight:700;color:var(--text);min-height:24px;margin-bottom:4px;transition:color .3s;}
+.timer-phase-progress{font-size:11px;color:var(--text3);margin-bottom:10px;min-height:16px;}
+.timer-time{font-family:var(--mono);font-size:72px;font-weight:400;letter-spacing:-.02em;color:var(--accent);line-height:1;margin-bottom:16px;transition:color .3s;}
+.timer-time.warning{color:var(--red);}
+.timer-total-bar-wrap{height:6px;background:var(--surface3);border-radius:99px;overflow:hidden;margin-bottom:8px;}
+.timer-total-bar{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width .5s linear,background .3s;}
+.timer-total-info{font-size:11px;color:var(--text3);}
+
+.timer-controls{display:flex;gap:10px;margin-top:14px;}
+.timer-btn{flex:1;padding:15px;border-radius:14px;border:none;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .12s,transform .1s;}
+.timer-btn:active{transform:scale(.97);}
+.timer-btn.primary{background:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(216,90,48,.3);}
+.timer-btn.primary:active{background:var(--accent-d);}
+.timer-btn.secondary{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);}
+.timer-btn.secondary:active{background:var(--surface3);}
+
+.timer-phase-overview{display:flex;flex-direction:column;gap:4px;margin-bottom:40px;}
+.tpo-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface);transition:border-color .2s,background .2s;}
+.tpo-item.active{border-color:var(--accent);background:var(--accent-l);}
+.tpo-item.done{opacity:.45;}
+.tpo-num{font-size:11px;color:var(--text3);width:18px;text-align:right;flex-shrink:0;}
+.tpo-name{flex:1;font-size:13px;}
+.tpo-dur{font-family:var(--mono);font-size:12px;color:var(--text2);flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -239,6 +281,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('alarms')">アラーム</button>
   <button class="tab-btn" onclick="switchTab('calendar')">カレンダー</button>
+  <button class="tab-btn" onclick="switchTab('timer')">タイマー</button>
   <button class="tab-btn" onclick="switchTab('settings')">設定</button>
 </div>
 
@@ -256,11 +299,9 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   </div>
   <div class="cal-hint" id="cal-hint">アラームを選択して、下のカレンダーで日付をタップすると ON/OFF が切り替わります。</div>
   <div class="cal-nav-row">
+    <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
     <div class="cal-month-label" id="cal-month-label"></div>
-    <div class="cal-nav-btns">
-      <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
-      <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
-    </div>
+    <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
   </div>
   <div class="cal-dow-row">
     <div class="cal-dow-cell sun">日</div><div class="cal-dow-cell">月</div><div class="cal-dow-cell">火</div>
@@ -274,6 +315,50 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <div class="legend-item"><div class="legend-dot ld-fon"></div>強制ON</div>
     <div class="legend-item"><div class="legend-dot ld-foff"></div>強制OFF</div>
   </div>
+</div>
+
+<!-- TIMER VIEW -->
+<div id="view-timer" class="view">
+
+  <!-- ── フェーズ編集 ── -->
+  <div class="sec-label">磨く順番・時間の設定</div>
+  <div id="phase-list" class="phase-list"></div>
+  <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
+
+  <!-- ── アナウンス設定 ── -->
+  <div class="sec-label" style="margin-top:16px;">アナウンス</div>
+  <div class="settings-card">
+    <div class="settings-row">
+      <div><div class="settings-row-title">音声アナウンス</div><div class="settings-row-sub">Web Speech API（日本語）</div></div>
+      <label class="sw"><input type="checkbox" id="announce-speech" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-title">効果音（ビープ）</div><div class="settings-row-sub">フェーズ切替時に鳴らす</div></div>
+      <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+    </div>
+  </div>
+
+  <!-- ── タイマー本体 ── -->
+  <div class="timer-display-card">
+    <div class="timer-phase-name" id="timer-phase-name">スタートを押してください</div>
+    <div class="timer-phase-progress" id="timer-phase-progress"></div>
+    <div class="timer-time" id="timer-time">00:00</div>
+    <div class="timer-total-bar-wrap">
+      <div class="timer-total-bar" id="timer-total-bar"></div>
+    </div>
+    <div class="timer-total-info" id="timer-total-info"></div>
+  </div>
+
+  <!-- ── コントロール ── -->
+  <div class="timer-controls">
+    <button class="timer-btn secondary" id="timer-reset-btn" onclick="timerReset()">リセット</button>
+    <button class="timer-btn primary" id="timer-start-btn" onclick="timerStartStop()">▶ スタート</button>
+  </div>
+
+  <!-- ── フェーズ一覧（実行中） ── -->
+  <div class="sec-label" style="margin-top:8px;">ステップ一覧</div>
+  <div id="timer-phase-overview" class="timer-phase-overview"></div>
+
 </div>
 
 <!-- SETTINGS VIEW -->
@@ -343,14 +428,28 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <label class="form-label">起床時刻</label>
         <div id="time-kb-mode">
           <div class="time-kb-wrap">
-            <div class="time-digits">
-              <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="07">
+            <div class="time-spinners">
+              <!-- 時 -->
+              <div class="time-spin-unit">
+                <button class="time-spin-btn" onclick="spinTime('h',1)">▲</button>
+                <div class="time-digit-box">
+                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="07">
+                </div>
+                <button class="time-spin-btn" onclick="spinTime('h',-1)">▼</button>
+              </div>
               <span class="time-colon">:</span>
-              <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00">
+              <!-- 分 -->
+              <div class="time-spin-unit">
+                <button class="time-spin-btn" onclick="spinTime('m',1)">▲</button>
+                <div class="time-digit-box">
+                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00">
+                </div>
+                <button class="time-spin-btn" onclick="spinTime('m',-1)">▼</button>
+              </div>
             </div>
             <button class="btn-mode-toggle" onclick="toggleTimeMode()">🕐 時計</button>
           </div>
-          <div class="time-hint">時（0〜23）と分（0〜59）を数字で入力</div>
+          <div class="time-hint">▲▼で調整、または数字を直接入力（時: 0〜23、分: 0〜59）</div>
         </div>
         <div id="time-clock-mode">
           <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
@@ -491,13 +590,18 @@ function init() {
   setInterval(checkAlarms, 5000);
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
+  loadTimerPhases();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
   // weekday btns
   document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
-  // time inputs: live validation
-  document.getElementById('t-h').addEventListener('input', function () { clampNum(this, 0, 23); });
-  document.getElementById('t-m').addEventListener('input', function () { clampNum(this, 0, 59); });
+  // time inputs: live validation + focus clear
+  const th = document.getElementById('t-h');
+  const tm = document.getElementById('t-m');
+  th.addEventListener('focus', function() { this.select(); });
+  tm.addEventListener('focus', function() { this.select(); });
+  th.addEventListener('input', function () { clampNum(this, 0, 23); });
+  tm.addEventListener('input', function () { clampNum(this, 0, 59); });
 }
 
 function clampNum(input, min, max) {
@@ -505,6 +609,15 @@ function clampNum(input, min, max) {
   if (isNaN(v)) return;
   if (v < min) input.value = min;
   if (v > max) input.value = max;
+}
+
+function spinTime(field, delta) {
+  const el = document.getElementById(field === 'h' ? 't-h' : 't-m');
+  const max = field === 'h' ? 23 : 59;
+  let v = parseInt(el.value);
+  if (isNaN(v)) v = field === 'h' ? 7 : 0;
+  v = ((v + delta) + max + 1) % (max + 1);
+  el.value = v;
 }
 
 // ───────────────────────────────────────────
@@ -542,14 +655,16 @@ function startClock() {
 }
 
 // ───────────────────────────────────────────
-// TABS
+// TABS（タイマー対応に更新）
 // ───────────────────────────────────────────
 function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', ['alarms', 'calendar', 'settings'][i] === name));
+  const names = ['alarms','calendar','timer','settings'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('view-'+name).classList.add('active');
   document.getElementById('add-bar').style.display = name === 'alarms' ? '' : 'none';
   if (name === 'calendar') { renderCalAlarmList(); renderCalendar(); }
+  if (name === 'timer') { renderPhaseList(); renderPhaseOverview(); }
 }
 
 // ───────────────────────────────────────────
@@ -1152,6 +1267,244 @@ function showSnack(msg) {
   const el = document.getElementById('snackbar');
   el.textContent = msg; el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ───────────────────────────────────────────
+// TIMER
+// ───────────────────────────────────────────
+const DEFAULT_PHASES = [
+  { name:'前歯', sec:20 },
+  { name:'右奥・外側', sec:20 },
+  { name:'右奥・内側', sec:20 },
+  { name:'左奥・外側', sec:20 },
+  { name:'左奥・内側', sec:20 },
+  { name:'仕上げ（全体）', sec:30 },
+];
+let timerPhases = [];
+let timerState = 'idle';   // idle | running | paused
+let timerPhaseIdx = 0;
+let timerRemain = 0;       // 現在フェーズの残り秒
+let timerInterval = null;
+let timerTotalElapsed = 0;
+let timerTotalSec = 0;
+
+function loadTimerPhases() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('sa_timer_phases') || 'null');
+    timerPhases = saved && saved.length ? saved : JSON.parse(JSON.stringify(DEFAULT_PHASES));
+  } catch(e) { timerPhases = JSON.parse(JSON.stringify(DEFAULT_PHASES)); }
+}
+function saveTimerPhases() {
+  localStorage.setItem('sa_timer_phases', JSON.stringify(timerPhases));
+}
+
+function renderPhaseList() {
+  const el = document.getElementById('phase-list');
+  el.innerHTML = timerPhases.map((p,i) => `
+    <div class="phase-item" data-i="${i}">
+      <span class="phase-drag">⠿</span>
+      <input class="phase-name-input" value="${esc(p.name)}" placeholder="ステップ名"
+        oninput="timerPhases[${i}].name=this.value;saveTimerPhases();renderPhaseOverview()">
+      <span class="phase-sep">:</span>
+      <input class="phase-sec-input" type="number" min="1" max="999" value="${p.sec}"
+        oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveTimerPhases();updateTimerTotals()">
+      <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
+      <button class="phase-del" onclick="deletePhase(${i})">✕</button>
+    </div>`).join('');
+}
+
+function addPhase() {
+  timerPhases.push({ name:'新しいステップ', sec:20 });
+  saveTimerPhases(); renderPhaseList(); renderPhaseOverview();
+}
+function deletePhase(i) {
+  timerPhases.splice(i,1);
+  saveTimerPhases(); renderPhaseList(); renderPhaseOverview();
+}
+
+function updateTimerTotals() {
+  timerTotalSec = timerPhases.reduce((s,p)=>s+p.sec, 0);
+  renderPhaseOverview();
+}
+
+function renderPhaseOverview() {
+  timerTotalSec = timerPhases.reduce((s,p)=>s+p.sec, 0);
+  const el = document.getElementById('timer-phase-overview');
+  if (!el) return;
+  el.innerHTML = timerPhases.map((p,i) => {
+    let cls = 'tpo-item';
+    if (timerState!=='idle' && i===timerPhaseIdx) cls+=' active';
+    else if (timerState!=='idle' && i<timerPhaseIdx) cls+=' done';
+    return `<div class="${cls}">
+      <span class="tpo-num">${i+1}</span>
+      <span class="tpo-name">${esc(p.name)}</span>
+      <span class="tpo-dur">${p.sec}秒</span>
+    </div>`;
+  }).join('');
+  const info = document.getElementById('timer-total-info');
+  if (info) info.textContent = `合計 ${fmtSec(timerTotalSec)}`;
+}
+
+function fmtSec(s) {
+  const m = Math.floor(s/60), r = s%60;
+  return m>0 ? `${m}分${r>0?r+'秒':''}` : `${s}秒`;
+}
+function fmtCountdown(s) {
+  const m = Math.floor(s/60), r = s%60;
+  return pad(m)+':'+pad(r);
+}
+
+function timerStartStop() {
+  if (timerState === 'idle') {
+    if (!timerPhases.length) { showSnack('ステップを追加してください'); return; }
+    timerPhaseIdx = 0;
+    timerTotalElapsed = 0;
+    timerTotalSec = timerPhases.reduce((s,p)=>s+p.sec,0);
+    timerRemain = timerPhases[0].sec;
+    timerState = 'running';
+    announcePhase(0);
+    timerInterval = setInterval(timerTick, 1000);
+    document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
+  } else if (timerState === 'running') {
+    timerState = 'paused';
+    clearInterval(timerInterval);
+    document.getElementById('timer-start-btn').textContent = '▶ 再開';
+  } else if (timerState === 'paused') {
+    timerState = 'running';
+    timerInterval = setInterval(timerTick, 1000);
+    document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
+  }
+  timerUpdateDisplay();
+  renderPhaseOverview();
+}
+
+function timerTick() {
+  timerRemain--;
+  timerTotalElapsed++;
+  if (timerRemain <= 0) {
+    // 次フェーズへ
+    timerPhaseIdx++;
+    if (timerPhaseIdx >= timerPhases.length) {
+      timerFinish(); return;
+    }
+    timerRemain = timerPhases[timerPhaseIdx].sec;
+    playBeep();
+    announcePhase(timerPhaseIdx);
+    renderPhaseOverview();
+  }
+  timerUpdateDisplay();
+}
+
+function timerUpdateDisplay() {
+  const timeEl = document.getElementById('timer-time');
+  const nameEl = document.getElementById('timer-phase-name');
+  const progEl = document.getElementById('timer-phase-progress');
+  const barEl  = document.getElementById('timer-total-bar');
+  if (!timeEl) return;
+
+  if (timerState === 'idle') {
+    timeEl.textContent = fmtCountdown(timerPhases[0]?.sec || 0);
+    timeEl.classList.remove('warning');
+    nameEl.textContent = 'スタートを押してください';
+    progEl.textContent = '';
+    barEl.style.width = '0%';
+    return;
+  }
+  const phase = timerPhases[timerPhaseIdx];
+  timeEl.textContent = fmtCountdown(timerRemain);
+  timeEl.classList.toggle('warning', timerRemain <= 5);
+  nameEl.textContent = phase.name;
+  const phaseElapsed = phase.sec - timerRemain;
+  progEl.textContent = `ステップ ${timerPhaseIdx+1}/${timerPhases.length}　残り ${timerRemain}秒`;
+  const pct = Math.min(100, (timerTotalElapsed / timerTotalSec) * 100);
+  barEl.style.width = pct+'%';
+  barEl.style.background = timerRemain<=5 ? 'var(--red)' : 'var(--accent)';
+}
+
+function timerFinish() {
+  clearInterval(timerInterval);
+  timerState = 'idle';
+  const timeEl = document.getElementById('timer-time');
+  const nameEl = document.getElementById('timer-phase-name');
+  const progEl = document.getElementById('timer-phase-progress');
+  const barEl  = document.getElementById('timer-total-bar');
+  if (timeEl) { timeEl.textContent = '完了！'; timeEl.classList.remove('warning'); }
+  if (nameEl) nameEl.textContent = '歯磨き完了🎉';
+  if (progEl) progEl.textContent = `合計 ${fmtSec(timerTotalSec)}`;
+  if (barEl) { barEl.style.width='100%'; barEl.style.background='var(--green)'; }
+  document.getElementById('timer-start-btn').textContent = '▶ スタート';
+  // 完了アナウンス
+  speak('歯磨き完了です。よくできました！');
+  playBeep('finish');
+  renderPhaseOverview();
+}
+
+function timerReset() {
+  clearInterval(timerInterval);
+  timerState = 'idle';
+  timerPhaseIdx = 0;
+  timerTotalElapsed = 0;
+  document.getElementById('timer-start-btn').textContent = '▶ スタート';
+  timerUpdateDisplay();
+  renderPhaseOverview();
+}
+
+// ── アナウンス ──
+function announcePhase(idx) {
+  const p = timerPhases[idx];
+  if (!p) return;
+  const isLast = idx === timerPhases.length-1;
+  const msg = isLast
+    ? `${p.name}を${p.sec}秒磨きます。最後のステップです。`
+    : `${p.name}を${p.sec}秒磨きます。`;
+  speak(msg);
+}
+
+function speak(text) {
+  if (!document.getElementById('announce-speech')?.checked) return;
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ja-JP';
+  utter.rate = 0.95;
+  utter.pitch = 1.1;
+  // 日本語音声を優先して選択
+  const voices = window.speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jaVoice) utter.voice = jaVoice;
+  window.speechSynthesis.speak(utter);
+}
+
+function playBeep(type = 'phase') {
+  if (!document.getElementById('announce-beep')?.checked) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (type === 'finish') {
+      // 上昇音
+      [523,659,784,1047].forEach((f,i) => {
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value=f; o.type='sine';
+        const t=ctx.currentTime+i*0.18;
+        g.gain.setValueAtTime(.28,t);
+        g.gain.exponentialRampToValueAtTime(.001,t+.25);
+        o.start(t); o.stop(t+.26);
+      });
+      setTimeout(()=>ctx.close(),1200);
+    } else {
+      // 短いビープ2回
+      [880,880].forEach((f,i)=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);
+        o.frequency.value=f;
+        const t=ctx.currentTime+i*0.22;
+        g.gain.setValueAtTime(.3,t);
+        g.gain.exponentialRampToValueAtTime(.001,t+.18);
+        o.start(t);o.stop(t+.19);
+      });
+      setTimeout(()=>ctx.close(),700);
+    }
+  } catch(e){}
 }
 
 init();
