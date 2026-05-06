@@ -55,8 +55,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .alarm-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
 .alarm-swipe-del.visible{opacity:1;}
 .alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s,transform .1s;position:relative;touch-action:pan-y;user-select:none;}
-.alarm-swipe-wrap:hover .alarm-hover-del{opacity:1;}
-.alarm-hover-del{position:absolute;top:50%;right:12px;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;background:var(--red);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;z-index:2;}
+.alarm-swipe-wrap:hover .alarm-hover-del{opacity:1;pointer-events:auto;}
+.alarm-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;}
+.alarm-hover-del:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
 @media (hover: none){.alarm-hover-del{display:none;}}
 .alarm-card.disabled{opacity:.42;}
 .alarm-card.firing{border-color:var(--accent);animation:cpulse 1s ease-in-out infinite alternate;}
@@ -271,7 +272,15 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
 .phase-item-top{display:flex;align-items:center;gap:6px;padding:8px 10px;}
 .phase-num{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;min-width:18px;}
-.phase-drag{color:var(--text3);font-size:18px;cursor:grab;padding:0 2px;touch-action:none;flex-shrink:0;}
+.phase-drag{display:none;}
+.phase-move-col{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.phase-move-btn{width:22px;height:20px;border:1px solid var(--border2);border-radius:5px;background:var(--surface2);color:var(--text2);font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;touch-action:manipulation;}
+.phase-move-btn:active{background:var(--surface3);color:var(--text);}
+.phase-move-btn:disabled{opacity:.25;cursor:default;}
+/* フェーズ アンドゥバー */
+.phase-undo-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text2);margin-bottom:4px;}
+.phase-undo-btn{padding:4px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);color:var(--accent);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;}
+.phase-undo-btn:active{background:var(--accent-l);}
 .phase-announce-inline{flex:1;min-width:0;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--font);font-size:13px;color:var(--text);padding:4px 8px;outline:none;height:30px;}
 .phase-announce-inline:focus{border-color:var(--accent);background:var(--surface3);}
 .phase-announce-inline::placeholder{color:var(--text3);}
@@ -351,8 +360,9 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <header class="app-header">
   <div class="app-title">Smart<span>Alarm</span></div>
   <div class="header-right">
-    <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="GASへアップロード（完全同期）">↑</button>
-    <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASからダウンロード（マージ）">↓</button>
+    <div class="gas-sync-info" id="gas-sync-info" style="display:none;"></div>
+    <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="GASへ送信（上書き）">↑</button>
+    <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASから受信（統合）">↓</button>
     <div class="header-clock" id="hdr-clock"></div>
     <div class="sync-dot" id="sync-dot" title="ローカル保存"></div>
   </div>
@@ -860,6 +870,7 @@ let timerRemain = 0;
 let timerInterval = null;
 let timerTotalElapsed = 0;
 let timerTotalSec = 0;
+let phaseUndoStack = []; // {phase, index} の配列（最大5件）
 
 // ───────────────────────────────────────────
 // SYNC DOT
@@ -889,92 +900,131 @@ async function remoteSave(data) {
   if (!url) return false;
   setSyncDot('syncing');
   try {
-    await fetch(url, { method: 'POST', body: JSON.stringify(data) });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     setSyncDot('ok');
     return true;
-  } catch { setSyncDot('err'); return false; }
+  } catch (e) { setSyncDot('err'); return false; }
 }
 
-// ── SYNC (マージ戦略: リモートをベースに自分のユーザーデータで上書き) ──
+// ── 送信: ローカルの全データをGASに完全上書き ──
+async function pushToRemote() {
+  const url = getGasUrl();
+  if (!url) return;
+  setSyncDot('syncing');
+  // 送信前に現在のユーザーデータをキャッシュに書き込む
+  saveUserDataToCache();
+  const d = getGroupCache();
+  const g = getCurrentGroup();
+  const payload = {
+    groupName: g ? g.name : '',
+    users: d.users || [],
+    deletedUsers: d.deletedUsers || [],
+    updatedAt: Date.now()
+  };
+  const ok = await remoteSave(payload);
+  updateGasSyncInfo(ok);
+  return ok;
+}
+
+// ── 受信: GASデータとローカルをユーザー単位でマージ ──
+// 方針: 各ユーザーは updatedAt が新しい方を採用、両方にしか居ないユーザーは追加
 async function syncFromRemote(silent = false) {
   const url = getGasUrl();
   if (!url) { setSyncDot('off'); if (!silent) showSnack('GAS URLが設定されていません'); return; }
-  if (!silent) setSyncDot('syncing');
+  setSyncDot('syncing');
   const remote = await remoteLoad(url);
-  if (!remote) { if (!silent) { setSyncDot('err'); showSnack('同期に失敗しました'); } return; }
+  if (!remote) {
+    setSyncDot('err');
+    if (!silent) showSnack('受信に失敗しました。GAS URLを確認してください。');
+    return;
+  }
 
+  // 送信前に現在のユーザーデータをキャッシュに書き込む
+  saveUserDataToCache();
   const local = getGroupCache();
   const curUid = local.currentUserId;
-  const merged = { ...local };
 
-  // deletedUsers マージ
-  const remoteDeleted = remote.deletedUsers || [];
-  const localDeleted = (merged.deletedUsers || []).slice();
-  remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
-  merged.deletedUsers = localDeleted;
+  // deletedUsers をマージ（双方の削除記録を統合）
+  const mergedDeleted = [...(local.deletedUsers || [])];
+  (remote.deletedUsers || []).forEach(ru => {
+    if (!mergedDeleted.find(u => u.id === ru.id)) mergedDeleted.push(ru);
+  });
 
-  // users マージ: リモートをベースに、currentUser はローカルで上書き
-  const newUsers = [];
-  (remote.users || []).forEach(ru => {
-    if (merged.deletedUsers.find(u => u.id === ru.id)) return;
-    if (ru.id === curUid) {
-      const lu = merged.users.find(u => u.id === ru.id) || {};
-      newUsers.push({ ...ru, ...lu }); // ローカルで上書き
-    } else {
-      newUsers.push(ru);
+  // ユーザーをマージ
+  const mergedUsers = [];
+  const allIds = new Set([
+    ...(local.users || []).map(u => u.id),
+    ...(remote.users || []).map(u => u.id)
+  ]);
+
+  allIds.forEach(id => {
+    // 削除済みはスキップ
+    if (mergedDeleted.find(u => u.id === id)) return;
+    const lu = (local.users || []).find(u => u.id === id);
+    const ru = (remote.users || []).find(u => u.id === id);
+    if (lu && ru) {
+      // 両方に存在: 現在のユーザーはローカル優先、それ以外はupdatedAtが新しい方
+      if (id === curUid) {
+        mergedUsers.push(lu);
+      } else {
+        const lTime = lu.updatedAt || 0;
+        const rTime = ru.updatedAt || 0;
+        mergedUsers.push(lTime >= rTime ? lu : ru);
+      }
+    } else if (lu) {
+      mergedUsers.push(lu); // ローカルのみ
+    } else if (ru) {
+      mergedUsers.push(ru); // リモートのみ
     }
   });
-  // リモートに存在しないローカルユーザーを追加
-  merged.users.forEach(lu => {
-    if (!newUsers.find(u => u.id === lu.id) && !merged.deletedUsers.find(u => u.id === lu.id)) {
-      newUsers.push(lu);
-    }
-  });
-  merged.users = newUsers;
 
-  // グループ名をリモートから反映
+  // グループ名をリモートから反映（GAS側が権威）
   if (remote.groupName) {
     const groups = loadGroups();
     const gid = getCurrentGroupId();
     const g = groups.find(g => g.id === gid);
-    if (g && g.gasUrl && remote.groupName !== g.name) { g.name = remote.groupName; saveGroups(groups); }
+    if (g && g.gasUrl && remote.groupName !== g.name) {
+      g.name = remote.groupName; saveGroups(groups);
+    }
   }
 
+  const merged = {
+    ...local,
+    users: mergedUsers,
+    deletedUsers: mergedDeleted
+  };
   setGroupCache(merged);
 
-  // データを自分のユーザーから再読み込み
+  // 現在のユーザーデータを再読み込み
   loadUserData();
   renderGroupName();
   renderGroupSheet();
-  if (!silent) { setSyncDot('ok'); showSnack('同期しました'); }
-  else setSyncDot('ok');
-  updateGasSyncInfo();
+  setSyncDot('ok');
+  if (!silent) showSnack('受信して統合しました');
+  updateGasSyncInfo(true);
 }
 
-async function pushToRemote() {
-  const url = getGasUrl();
-  if (!url) return;
-  const d = getGroupCache();
-  const g = getCurrentGroup();
-  const dataToSave = g ? { ...d, groupName: g.name } : d;
-  await remoteSave(dataToSave);
-  updateGasSyncInfo();
-}
-
-function updateGasSyncInfo() {
+function updateGasSyncInfo(ok = true) {
   const el = document.getElementById('gas-sync-info');
   if (!el) return;
   const url = getGasUrl();
   if (!url) { el.style.display = 'none'; return; }
   const now = new Date().toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  el.textContent = '最終同期: ' + now;
+  el.textContent = (ok ? '✅ ' : '❌ ') + '同期: ' + now;
   el.style.display = '';
 }
 
 // ───────────────────────────────────────────
 // SAVE / LOAD (per-user state in group)
 // ───────────────────────────────────────────
-function saveUserData() {
+
+// キャッシュのみ更新（GAS送信なし）
+function saveUserDataToCache() {
   const d = getGroupCache();
   const uid = getCurrentUserId();
   let user = d.users.find(u => u.id === uid);
@@ -984,13 +1034,16 @@ function saveUserData() {
   user.overrides = overrides;
   user.snoozeMin = snoozeMin;
   user.timerPresets = timerPresets;
+  user.updatedAt = Date.now();
   setGroupCache(d);
-  // GAS に非同期アップロード
-  if (getGasUrl()) {
-    const g = getCurrentGroup();
-    const dataToSave = g ? { ...d, groupName: g.name } : d;
-    remoteSave(dataToSave).catch(() => {});
-  }
+}
+
+function saveUserData() {
+  saveUserDataToCache();
+}
+
+function saveData() {
+  saveUserData();
 }
 
 function loadUserData() {
@@ -1007,10 +1060,6 @@ function loadUserData() {
   } catch { alarms = []; holidays = {}; overrides = {}; timerPresets = []; }
   document.getElementById('snooze-sel').value = snoozeMin;
   document.getElementById('snooze-disp').textContent = snoozeMin;
-}
-
-function saveData() {
-  saveUserData();
 }
 
 // ───────────────────────────────────────────
@@ -1056,7 +1105,7 @@ function init() {
   tm.addEventListener('input', function() { clampNum(this, 0, 59); });
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
-  // 自動同期（GAS URLがあれば起動時にサイレント同期）
+  // 起動時サイレント受信（データ競合を避けるためpushはしない）
   if (getGasUrl()) syncFromRemote(true);
 }
 
@@ -1081,14 +1130,20 @@ function updateHeaderSyncBtns() {
 async function headerPushToRemote() {
   const url = getGasUrl();
   if (!url) { showSnack('GAS URLが設定されていません'); return; }
-  showSnack('アップロード中…');
-  await pushToRemote();
-  showSnack('アップロード完了');
+  const btn = document.getElementById('hdr-upload-btn');
+  if (btn) btn.disabled = true;
+  showSnack('送信中（上書き）…');
+  const ok = await pushToRemote();
+  if (btn) btn.disabled = false;
+  showSnack(ok ? '✅ GASへ送信完了（上書き）' : '❌ 送信に失敗しました');
 }
 
 async function headerSyncFromRemote() {
+  const btn = document.getElementById('hdr-download-btn');
+  if (btn) btn.disabled = true;
   await syncFromRemote(false);
   renderUserTabsWrap();
+  if (btn) btn.disabled = false;
 }
 
 function clearGasUrlInput() {
@@ -1410,9 +1465,8 @@ function renderAlarms() {
             <div class="sw-thumb"></div>
           </label>
           <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
+          <button class="icon-btn del alarm-hover-del" onclick="deleteAlarm('${a.id}',true)" title="削除">✕</button>
         </div>
-      </div>
-      <button class="alarm-hover-del" onclick="deleteAlarm('${a.id}',true)" title="削除">✕</button>
     </div>`;
   }).join('');
   // スワイプ削除のイベント
@@ -2345,15 +2399,31 @@ function saveCurrentPresetPhases() {
 function renderPhaseList() {
   const el = document.getElementById('phase-list');
   if (!el) return;
-  el.innerHTML = timerPhases.map((p, i) => {
+
+  // アンドゥバーを先頭に表示
+  let undoHtml = '';
+  if (phaseUndoStack.length > 0) {
+    const last = phaseUndoStack[phaseUndoStack.length - 1];
+    const name = last.phase.announce?.trim() || `ステップ ${last.index + 1}`;
+    undoHtml = `<div class="phase-undo-bar">
+      <span>「${esc(name)}」を削除しました</span>
+      <button class="phase-undo-btn" onclick="undoDeletePhase()">元に戻す</button>
+    </div>`;
+  }
+
+  const phasesHtml = timerPhases.map((p, i) => {
     const isActive = timerState !== 'idle' && i === timerPhaseIdx;
+    const isFirst = i === 0, isLast = i === timerPhases.length - 1;
     return `
     <div class="phase-item${isActive ? ' active-phase' : ''}" data-i="${i}" id="phase-item-${i}">
       <div class="phase-swipe-del" id="psdel-${i}">削除</div>
       <div class="phase-item-inner" id="phase-inner-${i}" style="display:flex;flex-direction:column;">
         <div class="phase-item-top">
           <span class="phase-num">${i + 1}.</span>
-          <span class="phase-drag" title="長押しで並び替え">⠿</span>
+          <div class="phase-move-col">
+            <button class="phase-move-btn" onclick="movePhase(${i},-1)" ${isFirst ? 'disabled' : ''} title="上へ">▲</button>
+            <button class="phase-move-btn" onclick="movePhase(${i},1)" ${isLast ? 'disabled' : ''} title="下へ">▼</button>
+          </div>
           <input class="phase-announce-inline" value="${esc(p.announce || '')}"
             placeholder="アナウンス（例: 前歯を磨きます）"
             oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();">
@@ -2374,8 +2444,23 @@ function renderPhaseList() {
       </div>
     </div>`;
   }).join('');
-  initPhaseDrag();
+
+  el.innerHTML = undoHtml + phasesHtml;
   initPhaseSwipe();
+}
+
+function movePhase(i, delta) {
+  const j = i + delta;
+  if (j < 0 || j >= timerPhases.length) return;
+  [timerPhases[i], timerPhases[j]] = [timerPhases[j], timerPhases[i]];
+  saveCurrentPresetPhases();
+  renderPhaseList();
+  timerUpdateDisplay();
+  // 移動後のボタンにフォーカスを保持
+  setTimeout(() => {
+    const btn = document.querySelector(`#phase-item-${j} .phase-move-btn:${delta < 0 ? 'first-child' : 'last-child'}`);
+    if (btn && !btn.disabled) btn.focus();
+  }, 30);
 }
 
 function spinPhaseSec(i, delta) {
@@ -2401,10 +2486,31 @@ function addPhase() {
 }
 
 function deletePhase(i) {
-  timerPhases.splice(i, 1);
+  const removed = timerPhases.splice(i, 1)[0];
+  // アンドゥスタックに追加（最大5件）
+  phaseUndoStack.push({ phase: removed, index: i });
+  if (phaseUndoStack.length > 5) phaseUndoStack.shift();
   saveCurrentPresetPhases();
   renderPhaseList();
   timerUpdateDisplay();
+  // 5秒後にアンドゥをクリア
+  clearTimeout(deletePhase._undoTimer);
+  deletePhase._undoTimer = setTimeout(() => {
+    phaseUndoStack = [];
+    renderPhaseList();
+  }, 5000);
+}
+
+function undoDeletePhase() {
+  if (!phaseUndoStack.length) return;
+  const { phase, index } = phaseUndoStack.pop();
+  timerPhases.splice(Math.min(index, timerPhases.length), 0, phase);
+  saveCurrentPresetPhases();
+  clearTimeout(deletePhase._undoTimer);
+  if (!phaseUndoStack.length) phaseUndoStack = [];
+  renderPhaseList();
+  timerUpdateDisplay();
+  showSnack('元に戻しました');
 }
 
 // ───────────────────────────────────────────
