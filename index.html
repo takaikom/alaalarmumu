@@ -149,15 +149,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* TIME INPUT */
 .time-kb-wrap{display:flex;align-items:center;gap:10px;}
-.time-spinners{display:flex;align-items:center;gap:4px;}
-.time-spin-unit{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.time-spin-btn{width:50px;height:28px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text2);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;}
-.time-spin-btn:active{background:var(--surface3);color:var(--text);}
-.time-digit-box{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);transition:border-color .15s;}
+.time-spinners{display:flex;align-items:center;gap:6px;}
+.time-spin-unit{display:flex;align-items:center;gap:4px;}
+.time-digit-box{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);transition:border-color .15s;padding:0 4px;}
 .time-digit-box:focus-within{border-color:var(--accent);}
-.time-digit{width:54px;height:52px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;cursor:pointer;}
+.time-digit{width:52px;height:52px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;cursor:pointer;}
 .time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
-.time-colon{font-family:var(--mono);font-size:26px;color:var(--text2);user-select:none;padding:0 2px;}
+.time-spin-col{display:flex;flex-direction:column;gap:2px;}
+.time-spin-btn{width:28px;height:24px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text2);font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;}
+.time-spin-btn:active{background:var(--surface3);color:var(--text);}
+.time-colon{font-family:var(--mono);font-size:26px;color:var(--text2);user-select:none;padding:0 1px;}
 .time-hint{font-size:11px;color:var(--text3);margin-top:5px;}
 .btn-mode-toggle{padding:7px 11px;border:1px solid var(--border2);border-radius:8px;background:var(--surface3);color:var(--text3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .btn-mode-toggle:active{color:var(--text2);}
@@ -233,7 +234,13 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 /* TIMER */
 .phase-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
-.phase-item{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+.phase-item{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+.phase-item-top{display:flex;align-items:center;gap:8px;}
+.phase-item-bottom{display:flex;align-items:center;gap:6px;padding-left:4px;}
+.phase-announce-label{font-size:10px;color:var(--text3);white-space:nowrap;flex-shrink:0;}
+.phase-announce-input{flex:1;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--font);font-size:12px;color:var(--text);padding:5px 8px;outline:none;}
+.phase-announce-input:focus{border-color:var(--accent);}
+.phase-announce-input::placeholder{color:var(--text3);}
 .phase-drag{color:var(--text3);font-size:18px;cursor:grab;padding:0 2px;touch-action:none;}
 .phase-name-input{flex:1;border:none;outline:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text);min-width:0;}
 .phase-name-input::placeholder{color:var(--text3);}
@@ -402,8 +409,15 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v2.0</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
-    <div class="settings-row"><div><div class="settings-row-title">インストール方法</div><div class="settings-row-sub">Chromeメニュー → ホーム画面に追加</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v3.0</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row">
+      <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
+      <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-title">アプリを最新版に更新</div><div class="settings-row-sub">画面が古いまま変わらない場合に実行</div></div>
+      <button class="settings-btn" onclick="clearCacheAndReload()">更新</button>
+    </div>
   </div>
 </div>
 
@@ -431,25 +445,29 @@ select.form-input option{background:var(--surface2);color:var(--text);}
             <div class="time-spinners">
               <!-- 時 -->
               <div class="time-spin-unit">
-                <button class="time-spin-btn" onclick="spinTime('h',1)">▲</button>
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="07">
+                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00">
                 </div>
-                <button class="time-spin-btn" onclick="spinTime('h',-1)">▼</button>
+                <div class="time-spin-col">
+                  <button class="time-spin-btn" onclick="spinTime('h',1)">▲</button>
+                  <button class="time-spin-btn" onclick="spinTime('h',-1)">▼</button>
+                </div>
               </div>
               <span class="time-colon">:</span>
               <!-- 分 -->
               <div class="time-spin-unit">
-                <button class="time-spin-btn" onclick="spinTime('m',1)">▲</button>
                 <div class="time-digit-box">
                   <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00">
                 </div>
-                <button class="time-spin-btn" onclick="spinTime('m',-1)">▼</button>
+                <div class="time-spin-col">
+                  <button class="time-spin-btn" onclick="spinTime('m',1)">▲</button>
+                  <button class="time-spin-btn" onclick="spinTime('m',-1)">▼</button>
+                </div>
               </div>
             </div>
             <button class="btn-mode-toggle" onclick="toggleTimeMode()">🕐 時計</button>
           </div>
-          <div class="time-hint">▲▼で調整、または数字を直接入力（時: 0〜23、分: 0〜59）</div>
+          <div class="time-hint">▲▼で調整、または入力欄をタップして直接入力（時: 0〜23、分: 0〜59）</div>
         </div>
         <div id="time-clock-mode">
           <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
@@ -1273,12 +1291,12 @@ function showSnack(msg) {
 // TIMER
 // ───────────────────────────────────────────
 const DEFAULT_PHASES = [
-  { name:'前歯', sec:20 },
-  { name:'右奥・外側', sec:20 },
-  { name:'右奥・内側', sec:20 },
-  { name:'左奥・外側', sec:20 },
-  { name:'左奥・内側', sec:20 },
-  { name:'仕上げ（全体）', sec:30 },
+  { name:'前歯', sec:20, announce:'前歯を磨きます。20秒' },
+  { name:'右奥・外側', sec:20, announce:'右奥の外側を磨きます。20秒' },
+  { name:'右奥・内側', sec:20, announce:'右奥の内側を磨きます。20秒' },
+  { name:'左奥・外側', sec:20, announce:'左奥の外側を磨きます。20秒' },
+  { name:'左奥・内側', sec:20, announce:'左奥の内側を磨きます。20秒' },
+  { name:'仕上げ（全体）', sec:30, announce:'仕上げです。全体をていねいに磨きます。30秒' },
 ];
 let timerPhases = [];
 let timerState = 'idle';   // idle | running | paused
@@ -1302,14 +1320,21 @@ function renderPhaseList() {
   const el = document.getElementById('phase-list');
   el.innerHTML = timerPhases.map((p,i) => `
     <div class="phase-item" data-i="${i}">
-      <span class="phase-drag">⠿</span>
-      <input class="phase-name-input" value="${esc(p.name)}" placeholder="ステップ名"
-        oninput="timerPhases[${i}].name=this.value;saveTimerPhases();renderPhaseOverview()">
-      <span class="phase-sep">:</span>
-      <input class="phase-sec-input" type="number" min="1" max="999" value="${p.sec}"
-        oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveTimerPhases();updateTimerTotals()">
-      <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
-      <button class="phase-del" onclick="deletePhase(${i})">✕</button>
+      <div class="phase-item-top">
+        <span class="phase-drag">⠿</span>
+        <input class="phase-name-input" value="${esc(p.name)}" placeholder="ステップ名"
+          oninput="timerPhases[${i}].name=this.value;saveTimerPhases();renderPhaseOverview()">
+        <span class="phase-sep">:</span>
+        <input class="phase-sec-input" type="number" min="1" max="999" value="${p.sec}"
+          oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveTimerPhases();updateTimerTotals()">
+        <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
+        <button class="phase-del" onclick="deletePhase(${i})">✕</button>
+      </div>
+      <div class="phase-item-bottom">
+        <span class="phase-announce-label">アナウンス:</span>
+        <input class="phase-announce-input" value="${esc(p.announce||'')}" placeholder="省略時はステップ名を読み上げ"
+          oninput="timerPhases[${i}].announce=this.value;saveTimerPhases()">
+      </div>
     </div>`).join('');
 }
 
@@ -1382,15 +1407,17 @@ function timerTick() {
   timerRemain--;
   timerTotalElapsed++;
   if (timerRemain <= 0) {
-    // 次フェーズへ
     timerPhaseIdx++;
     if (timerPhaseIdx >= timerPhases.length) {
       timerFinish(); return;
     }
     timerRemain = timerPhases[timerPhaseIdx].sec;
-    playBeep();
+    playBeep('phase');
     announcePhase(timerPhaseIdx);
     renderPhaseOverview();
+  } else {
+    // フェーズ間のカウントダウン音（毎秒）
+    playCountdownTick();
   }
   timerUpdateDisplay();
 }
@@ -1453,11 +1480,26 @@ function timerReset() {
 function announcePhase(idx) {
   const p = timerPhases[idx];
   if (!p) return;
-  const isLast = idx === timerPhases.length-1;
-  const msg = isLast
-    ? `${p.name}を${p.sec}秒磨きます。最後のステップです。`
+  // announce フィールドがあればそれを、なければデフォルト文を使用
+  const msg = p.announce && p.announce.trim()
+    ? p.announce.trim()
     : `${p.name}を${p.sec}秒磨きます。`;
   speak(msg);
+}
+
+// カウントダウン音（残り秒が指定秒以下で毎秒鳴らす）
+function playCountdownTick() {
+  if (!document.getElementById('announce-beep')?.checked) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 660; o.type = 'sine';
+    g.gain.setValueAtTime(.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .08);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + .09);
+    setTimeout(() => ctx.close(), 200);
+  } catch(e){}
 }
 
 function speak(text) {
@@ -1465,10 +1507,7 @@ function speak(text) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'ja-JP';
-  utter.rate = 0.95;
-  utter.pitch = 1.1;
-  // 日本語音声を優先して選択
+  utter.lang = 'ja-JP'; utter.rate = 0.95; utter.pitch = 1.1;
   const voices = window.speechSynthesis.getVoices();
   const jaVoice = voices.find(v => v.lang.startsWith('ja'));
   if (jaVoice) utter.voice = jaVoice;
@@ -1480,7 +1519,6 @@ function playBeep(type = 'phase') {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (type === 'finish') {
-      // 上昇音
       [523,659,784,1047].forEach((f,i) => {
         const o=ctx.createOscillator(), g=ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
@@ -1492,19 +1530,48 @@ function playBeep(type = 'phase') {
       });
       setTimeout(()=>ctx.close(),1200);
     } else {
-      // 短いビープ2回
-      [880,880].forEach((f,i)=>{
+      [880,1100].forEach((f,i)=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
         o.connect(g);g.connect(ctx.destination);
         o.frequency.value=f;
-        const t=ctx.currentTime+i*0.22;
+        const t=ctx.currentTime+i*0.18;
         g.gain.setValueAtTime(.3,t);
-        g.gain.exponentialRampToValueAtTime(.001,t+.18);
-        o.start(t);o.stop(t+.19);
+        g.gain.exponentialRampToValueAtTime(.001,t+.15);
+        o.start(t);o.stop(t+.16);
       });
-      setTimeout(()=>ctx.close(),700);
+      setTimeout(()=>ctx.close(),600);
     }
   } catch(e){}
+}
+
+// ── PWAインストール・キャッシュ ──
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+function tryInstallPWA() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => { deferredInstallPrompt = null; });
+  } else {
+    alert('インストール手順:\n\n① Chromeのアドレスバー右端の ⊕ をタップ\n　または\n② Chromeメニュー(⋮)→「ホーム画面に追加」\n\n※ すでにインストール済みの場合はこの手順は不要です。');
+  }
+}
+
+function clearCacheAndReload() {
+  if (!confirm('キャッシュを削除してアプリを最新版に更新しますか？')) return;
+  if ('caches' in window) {
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations()
+            .then(regs => Promise.all(regs.map(r => r.unregister())))
+            .then(() => location.reload(true));
+        } else { location.reload(true); }
+      });
+  } else { location.reload(true); }
 }
 
 init();
