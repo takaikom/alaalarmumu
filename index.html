@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1C1A17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SmartAlarm">
+<link rel="manifest" href="manifest.json">
+<title>SmartAlarm</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1C1A17; --surface:#252320; --surface2:#2E2B27; --surface3:#383430;
+  --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.15);
+  --text:#E8E2D9; --text2:#9C9488; --text3:#5C5650;
+  --accent:#D85A30; --accent-l:rgba(216,90,48,.18); --accent-d:#993C1D;
+  --green:#5A8A2A; --green-l:rgba(90,138,42,.2);
+  --amber:#C08020; --amber-l:rgba(192,128,32,.2);
+  --blue:#4A80C0; --blue-l:rgba(74,128,192,.2);
+  --red:#C03030; --red-l:rgba(192,48,48,.2);
+  --font:'Noto Sans JP',sans-serif; --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;font-size:14px;}
+
+/* HEADER */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
+.app-title{font-size:18px;font-weight:700;letter-spacing:-.3px;}
+.app-title span{color:var(--accent);}
+.header-clock{font-family:var(--mono);font-size:13px;color:var(--text2);}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:53px;z-index:49;}
+.tab-btn{flex:1;padding:10px 0;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color .15s,border-color .15s;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* VIEW */
+.view{display:none;padding:12px 16px 120px;}
+.view.active{display:block;}
+.sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:16px 0 8px;}
+
+/* ALARM CARDS */
+.alarm-list{display:flex;flex-direction:column;gap:8px;}
+.alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s;}
+.alarm-card.disabled{opacity:.42;}
+.alarm-card.firing{border-color:var(--accent);animation:cpulse 1s ease-in-out infinite alternate;}
+@keyframes cpulse{from{background:var(--surface);}to{background:rgba(216,90,48,.1);}}
+.alarm-card-left{flex:1;min-width:0;}
+.alarm-time-big{font-family:var(--mono);font-size:34px;font-weight:400;letter-spacing:-.02em;line-height:1;margin-bottom:4px;}
+.alarm-subtitle{font-size:12px;color:var(--text2);margin-bottom:4px;}
+.alarm-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.atag{font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid var(--border2);color:var(--text3);}
+.atag.holiday{border-color:rgba(90,138,42,.5);color:var(--green);}
+.atag.music{border-color:rgba(74,128,192,.5);color:var(--blue);}
+.alarm-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;}
+
+/* TOGGLE SWITCH — OFF時はグレー、ON時はグリーン、つまみは白 */
+.sw{position:relative;width:46px;height:26px;cursor:pointer;flex-shrink:0;}
+.sw input{position:absolute;opacity:0;width:0;height:0;}
+.sw-track{position:absolute;inset:0;border-radius:99px;background:var(--surface3);border:1.5px solid var(--border2);transition:background .2s,border-color .2s;}
+.sw input:checked~.sw-track{background:var(--green);border-color:var(--green);}
+.sw-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#666;transition:transform .2s,background .2s;}
+.sw input:checked~.sw-thumb{transform:translateX(20px);background:#fff;}
+
+.icon-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s,border-color .12s;}
+.icon-btn.edit:active{background:var(--amber-l);color:var(--amber);border-color:var(--amber);}
+.icon-btn.del:active{background:var(--red-l);color:var(--red);border-color:var(--red);}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3);font-size:13px;line-height:2;}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.4;}
+
+/* ADD BAR */
+.add-bar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:50;}
+.add-bar-inner{display:flex;align-items:center;justify-content:space-between;}
+.next-alarm-info{font-size:11px;color:var(--text3);}
+.next-alarm-info strong{color:var(--text2);font-family:var(--mono);}
+.btn-fab{width:44px;height:44px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:24px;font-weight:300;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,transform .1s;box-shadow:0 2px 12px rgba(216,90,48,.35);}
+.btn-fab:active{transform:scale(.93);background:var(--accent-d);}
+
+/* CALENDAR */
+.cal-alarm-selector{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px;}
+.cal-selector-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.cal-alarm-list{display:flex;flex-direction:column;gap:4px;}
+.cal-alarm-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);cursor:pointer;transition:border-color .12s;}
+.cal-alarm-item.sel{border-color:var(--accent);}
+.cal-alarm-item-l{display:flex;align-items:center;gap:10px;}
+.cal-ai-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--text3);flex-shrink:0;transition:background .12s,border-color .12s;}
+.cal-alarm-item.sel .cal-ai-dot{background:var(--accent);border-color:var(--accent);}
+.cal-ai-time{font-family:var(--mono);font-size:18px;}
+.cal-ai-name{font-size:11px;color:var(--text2);}
+.cal-ai-status{font-size:11px;color:var(--text3);}
+.cal-hint{font-size:11px;color:var(--text3);padding:6px 2px 10px;line-height:1.7;}
+
+.cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-month-label{font-size:16px;font-weight:700;}
+.cal-nav-btns{display:flex;gap:4px;}
+.cal-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.cal-nav-btn:active{background:var(--surface3);}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px;}
+.cal-dow-cell{text-align:center;font-size:11px;color:var(--text3);padding:4px 0;}
+.cal-dow-cell.sun{color:#B06060;} .cal-dow-cell.sat{color:#5070A0;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:4px;font-size:13px;color:var(--text2);cursor:pointer;border:1.5px solid transparent;transition:background .1s,border-color .1s;position:relative;user-select:none;}
+.cal-cell:active{background:var(--surface3);}
+.cal-cell.other-month{color:var(--text3);opacity:.4;}
+.cal-cell.today{border-color:var(--accent);color:var(--accent);font-weight:700;}
+.cal-cell.sunday,.cal-cell.holiday{color:#B06060;}
+.cal-cell.saturday{color:#5070A0;}
+.cal-cell.s-default-on{background:rgba(90,138,42,.14);border-color:rgba(90,138,42,.4);}
+.cal-cell.s-default-off{background:rgba(80,60,40,.2);}
+.cal-cell.s-force-on{background:rgba(90,138,42,.28);border-color:var(--green);}
+.cal-cell.s-force-off{background:rgba(192,48,48,.18);border-color:var(--red);}
+.cell-dot{width:4px;height:4px;border-radius:50%;position:absolute;bottom:3px;left:50%;transform:translateX(-50%);}
+.cell-dot.on{background:var(--green);} .cell-dot.off{background:var(--red);} .cell-dot.hol{background:#B06060;right:4px;left:auto;transform:none;}
+
+.cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.legend-dot{width:9px;height:9px;border-radius:3px;}
+.ld-on{background:rgba(90,138,42,.5);} .ld-off{background:rgba(80,60,40,.4);}
+.ld-fon{background:var(--green);} .ld-foff{background:var(--red);}
+
+/* SETTINGS */
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);}
+.settings-row:last-child{border-bottom:none;}
+.settings-row-title{font-size:13px;font-weight:500;}
+.settings-row-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.settings-btn{padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:12px;cursor:pointer;white-space:nowrap;}
+.settings-btn:active{background:var(--surface3);}
+.holiday-status{font-size:12px;color:var(--green);padding:0 16px 10px;}
+
+/* SHEET */
+.sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:flex-end;justify-content:center;}
+.sheet-overlay.open{display:flex;}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;animation:slideUp .22s cubic-bezier(.22,1,.36,1);}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.sheet-handle{width:36px;height:4px;border-radius:99px;background:var(--border2);margin:14px auto 4px;}
+.sheet-scroll{flex:1;overflow-y:auto;padding:4px 20px 8px;}
+.sheet-footer{flex-shrink:0;padding:8px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--border);}
+.sheet-title{font-size:17px;font-weight:700;margin-bottom:16px;margin-top:8px;}
+
+/* FORM */
+.form-group{margin-bottom:16px;}
+.form-label{font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--text3);margin-bottom:6px;display:block;text-transform:uppercase;}
+.form-input{width:100%;height:44px;border:1.5px solid var(--border2);border-radius:10px;padding:0 12px;font-family:var(--font);font-size:15px;color:var(--text);background:var(--surface2);outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--text3);}
+
+/* TIME INPUT */
+.time-kb-wrap{display:flex;align-items:center;gap:10px;}
+.time-digits{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);overflow:hidden;transition:border-color .15s;}
+.time-digits:focus-within{border-color:var(--accent);}
+.time-digit{width:58px;height:54px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;}
+.time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
+.time-colon{font-family:var(--mono);font-size:28px;color:var(--text2);user-select:none;padding:0 1px;}
+.time-hint{font-size:11px;color:var(--text3);margin-top:5px;}
+.btn-mode-toggle{padding:7px 11px;border:1px solid var(--border2);border-radius:8px;background:var(--surface3);color:var(--text3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.btn-mode-toggle:active{color:var(--text2);}
+
+/* CLOCK PICKER */
+#time-clock-mode{display:none;}
+.clock-area{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0;}
+.clock-hm-btns{display:flex;gap:8px;}
+.clock-hm-btn{padding:6px 18px;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;}
+.clock-hm-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.clock-display{font-family:var(--mono);font-size:40px;font-weight:400;color:var(--text);letter-spacing:.03em;}
+.clock-face{width:220px;height:220px;border-radius:50%;background:var(--surface2);border:2px solid var(--border2);position:relative;cursor:pointer;touch-action:none;flex-shrink:0;}
+.clock-center-dot{position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);z-index:2;}
+.clock-hand{position:absolute;top:50%;left:50%;width:2px;transform-origin:top center;background:var(--accent);border-radius:2px;z-index:1;}
+.clock-num{position:absolute;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2);border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;transition:background .1s,color .1s;}
+.clock-num.active{background:var(--accent);color:#fff;font-weight:700;}
+
+/* WEEKDAY */
+.wd-row{display:flex;gap:4px;}
+.wd-btn{flex:1;padding:9px 0;text-align:center;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:12px;cursor:pointer;transition:all .12s;}
+.wd-btn.sel{background:var(--accent-l);border-color:var(--accent);color:var(--accent);}
+.wd-btn.sun.sel{background:rgba(176,96,96,.18);border-color:#B06060;color:#B06060;}
+.wd-btn.sat.sel{background:rgba(80,112,160,.18);border-color:#5070A0;color:#5070A0;}
+
+/* CHECK ROW */
+.check-row{display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;}
+.check-row input{display:none;}
+.chk-box{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,border-color .15s;}
+.check-row input:checked~.chk-box{background:var(--green);border-color:var(--green);}
+.chk-svg{opacity:0;transition:opacity .1s;}
+.check-row input:checked~.chk-box .chk-svg{opacity:1;}
+.check-row-label{font-size:13px;}
+.check-row-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* SOUND */
+.sound-opts{display:flex;flex-direction:column;gap:4px;}
+.sound-opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);cursor:pointer;transition:border-color .12s;}
+.sound-opt.sel{border-color:var(--accent);}
+.sopt-radio{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--text3);flex-shrink:0;position:relative;}
+.sound-opt.sel .sopt-radio{border-color:var(--accent);}
+.sound-opt.sel .sopt-radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--accent);}
+.sopt-name{font-size:13px;flex:1;}
+.sopt-preview{padding:3px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);}
+.sopt-preview:active{color:var(--text);}
+
+.music-picker{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1.5px dashed var(--border2);background:var(--surface2);cursor:pointer;margin-top:6px;}
+.music-picker-icon{font-size:20px;}
+.music-picker-info{flex:1;min-width:0;}
+.music-picker-name{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.music-picker-sub{font-size:10px;color:var(--text3);}
+
+/* BUTTONS */
+.btn-primary{width:100%;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;transition:background .12s;}
+.btn-primary:active{background:var(--accent-d);}
+.btn-cancel{width:100%;padding:12px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer;}
+
+/* SELECT */
+select.form-input{-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235C5650' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+select.form-input option{background:var(--surface2);color:var(--text);}
+
+/* FIRING */
+#firing-overlay{position:fixed;inset:0;z-index:500;background:#18140F;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+#firing-overlay.open{display:flex;}
+.firing-time{font-family:var(--mono);font-size:80px;font-weight:400;color:var(--accent);line-height:1;}
+.firing-label{font-size:18px;color:var(--text2);}
+.btn-stop{margin-top:20px;padding:20px 72px;border-radius:14px;border:none;background:var(--red);color:#fff;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;animation:breathe 1.4s ease-in-out infinite;}
+@keyframes breathe{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
+.btn-snooze{padding:12px 40px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer;}
+
+/* SNACKBAR */
+.snackbar{position:fixed;bottom:80px;left:16px;right:16px;background:var(--surface3);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text);z-index:400;transform:translateY(6px);opacity:0;transition:all .22s;pointer-events:none;}
+.snackbar.show{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-title">Smart<span>Alarm</span></div>
+  <div class="header-clock" id="hdr-clock"></div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('alarms')">アラーム</button>
+  <button class="tab-btn" onclick="switchTab('calendar')">カレンダー</button>
+  <button class="tab-btn" onclick="switchTab('settings')">設定</button>
+</div>
+
+<!-- ALARMS VIEW -->
+<div id="view-alarms" class="view active">
+  <div class="sec-label">登録済みアラーム</div>
+  <div class="alarm-list" id="alarm-list"></div>
+</div>
+
+<!-- CALENDAR VIEW -->
+<div id="view-calendar" class="view">
+  <div class="cal-alarm-selector">
+    <div class="cal-selector-title">① 対象アラームを選択</div>
+    <div class="cal-alarm-list" id="cal-alarm-list"></div>
+  </div>
+  <div class="cal-hint" id="cal-hint">アラームを選択して、下のカレンダーで日付をタップすると ON/OFF が切り替わります。</div>
+  <div class="cal-nav-row">
+    <div class="cal-month-label" id="cal-month-label"></div>
+    <div class="cal-nav-btns">
+      <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+  </div>
+  <div class="cal-dow-row">
+    <div class="cal-dow-cell sun">日</div><div class="cal-dow-cell">月</div><div class="cal-dow-cell">火</div>
+    <div class="cal-dow-cell">水</div><div class="cal-dow-cell">木</div><div class="cal-dow-cell">金</div>
+    <div class="cal-dow-cell sat">土</div>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+  <div class="cal-legend">
+    <div class="legend-item"><div class="legend-dot ld-on"></div>鳴る</div>
+    <div class="legend-item"><div class="legend-dot ld-off"></div>スキップ</div>
+    <div class="legend-item"><div class="legend-dot ld-fon"></div>強制ON</div>
+    <div class="legend-item"><div class="legend-dot ld-foff"></div>強制OFF</div>
+  </div>
+</div>
+
+<!-- SETTINGS VIEW -->
+<div id="view-settings" class="view">
+  <div class="sec-label">祝日データ</div>
+  <div class="settings-card">
+    <div class="settings-row">
+      <div><div class="settings-row-title">日本の祝日を取得</div><div class="settings-row-sub">holidays-jp.github.io より読込</div></div>
+      <button class="settings-btn" id="btn-fetch" onclick="fetchHolidays()">取得</button>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-title">祝日データをリセット</div></div>
+      <button class="settings-btn" onclick="resetHolidays()">削除</button>
+    </div>
+  </div>
+  <div class="holiday-status" id="holiday-status"></div>
+
+  <div class="sec-label">スヌーズ</div>
+  <div class="settings-card">
+    <div class="settings-row">
+      <div class="settings-row-title">スヌーズ時間</div>
+      <select class="form-input" style="width:auto;height:36px;font-size:13px;" id="snooze-sel" onchange="saveSnooze()">
+        <option value="5">5分</option><option value="10" selected>10分</option>
+        <option value="15">15分</option><option value="30">30分</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sec-label">データ管理</div>
+  <div class="settings-card">
+    <div class="settings-row">
+      <div><div class="settings-row-title">エクスポート</div><div class="settings-row-sub">設定をJSONで保存</div></div>
+      <button class="settings-btn" onclick="exportData()">書出し</button>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-row-title">インポート</div><div class="settings-row-sub">JSONから復元</div></div>
+      <button class="settings-btn" onclick="document.getElementById('import-file').click()">読込み</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+
+  <div class="sec-label">アプリ情報</div>
+  <div class="settings-card">
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v2.0</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">インストール方法</div><div class="settings-row-sub">Chromeメニュー → ホーム画面に追加</div></div></div>
+  </div>
+</div>
+
+<!-- ADD BAR -->
+<div class="add-bar" id="add-bar">
+  <div class="add-bar-inner">
+    <div class="next-alarm-info" id="next-alarm-info">次のアラームを計算中…</div>
+    <button class="btn-fab" onclick="openModal()">＋</button>
+  </div>
+</div>
+
+<!-- ALARM EDIT SHEET -->
+<div class="sheet-overlay" id="alarm-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-scroll">
+      <div class="sheet-title" id="sheet-title">アラームを追加</div>
+      <input type="hidden" id="edit-id">
+
+      <!-- 時刻 -->
+      <div class="form-group">
+        <label class="form-label">起床時刻</label>
+        <div id="time-kb-mode">
+          <div class="time-kb-wrap">
+            <div class="time-digits">
+              <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="07">
+              <span class="time-colon">:</span>
+              <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00">
+            </div>
+            <button class="btn-mode-toggle" onclick="toggleTimeMode()">🕐 時計</button>
+          </div>
+          <div class="time-hint">時（0〜23）と分（0〜59）を数字で入力</div>
+        </div>
+        <div id="time-clock-mode">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+            <button class="btn-mode-toggle" onclick="toggleTimeMode()">⌨️ キーボード</button>
+          </div>
+          <div class="clock-area">
+            <div class="clock-hm-btns">
+              <button class="clock-hm-btn active" id="btn-ch" onclick="setClockMode('h')">時</button>
+              <button class="clock-hm-btn" id="btn-cm" onclick="setClockMode('m')">分</button>
+            </div>
+            <div class="clock-display" id="clock-disp">07:00</div>
+            <div class="clock-face" id="clock-face"
+              ontouchstart="cDragStart(event)" ontouchmove="cDragMove(event)" ontouchend="cDragEnd(event)"
+              onmousedown="cDragStart(event)" onmousemove="cDragMove(event)" onmouseup="cDragEnd(event)">
+              <div class="clock-center-dot"></div>
+              <div class="clock-hand" id="c-hand" style="height:75px;margin-top:0;margin-left:-1px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ラベル -->
+      <div class="form-group">
+        <label class="form-label">ラベル（任意）</label>
+        <input type="text" class="form-input" id="alarm-label" placeholder="平日の目覚まし">
+      </div>
+
+      <!-- 繰り返し -->
+      <div class="form-group">
+        <label class="form-label">繰り返し曜日</label>
+        <div class="wd-row">
+          <button class="wd-btn sun" data-d="0">日</button>
+          <button class="wd-btn" data-d="1">月</button>
+          <button class="wd-btn" data-d="2">火</button>
+          <button class="wd-btn" data-d="3">水</button>
+          <button class="wd-btn" data-d="4">木</button>
+          <button class="wd-btn" data-d="5">金</button>
+          <button class="wd-btn sat" data-d="6">土</button>
+        </div>
+        <div class="time-hint">未選択 = その日1回だけ鳴る</div>
+      </div>
+
+      <!-- 祝日スキップ -->
+      <div class="form-group">
+        <label class="form-label">祝日の扱い</label>
+        <label class="check-row">
+          <input type="checkbox" id="skip-hol" checked>
+          <div class="chk-box">
+            <svg class="chk-svg" width="12" height="9" viewBox="0 0 12 9">
+              <path d="M1 4.5l3 3L11 1" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-row-label">祝日はスキップ</div>
+            <div class="check-row-sub">祝日データに基づき自動的にOFF</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- アラーム音 -->
+      <div class="form-group">
+        <label class="form-label">アラーム音</label>
+        <div class="sound-opts">
+          <div class="sound-opt sel" data-s="beep" onclick="selSound(this)">
+            <div class="sopt-radio"></div><span class="sopt-name">ビープ音</span>
+            <button class="sopt-preview" onclick="previewSound('beep',event)">▶ 試聴</button>
+          </div>
+          <div class="sound-opt" data-s="gentle" onclick="selSound(this)">
+            <div class="sopt-radio"></div><span class="sopt-name">やさしい音</span>
+            <button class="sopt-preview" onclick="previewSound('gentle',event)">▶ 試聴</button>
+          </div>
+          <div class="sound-opt" data-s="urgent" onclick="selSound(this)">
+            <div class="sopt-radio"></div><span class="sopt-name">緊急音</span>
+            <button class="sopt-preview" onclick="previewSound('urgent',event)">▶ 試聴</button>
+          </div>
+          <div class="sound-opt" data-s="music" onclick="selSound(this)">
+            <div class="sopt-radio"></div><span class="sopt-name">音楽ファイル</span>
+          </div>
+        </div>
+        <div id="music-section" style="display:none;">
+          <div class="music-picker" onclick="document.getElementById('music-input').click()">
+            <div class="music-picker-icon">🎵</div>
+            <div class="music-picker-info">
+              <div class="music-picker-name" id="music-name">ファイルを選択…</div>
+              <div class="music-picker-sub">MP3・AAC・WAV・OGG 対応</div>
+            </div>
+            <div style="font-size:18px;color:var(--text3);">›</div>
+          </div>
+          <input type="file" id="music-input" accept="audio/*" style="display:none" onchange="onMusicFile(event)">
+        </div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-primary" onclick="saveAlarm()">保存する</button>
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIRING OVERLAY -->
+<div id="firing-overlay">
+  <div class="firing-time" id="firing-time">07:00</div>
+  <div class="firing-label" id="firing-label">起床の時間です</div>
+  <button class="btn-stop" onclick="stopAlarm()">STOP</button>
+  <button class="btn-snooze" onclick="snoozeAlarm()">スヌーズ（<span id="snooze-disp">10</span>分）</button>
+</div>
+
+<div class="snackbar" id="snackbar"></div>
+
+<script>
+'use strict';
+// ───────────────────────────────────────────
+// STATE
+// ───────────────────────────────────────────
+let alarms = [], holidays = {}, overrides = {};
+let snoozeMin = 10;
+let calY, calM;
+let selAlarmId = null;   // カレンダーで選択中のアラームID
+let firingAlarm = null, firingAudio = null, firingCtx = null;
+let loopTimer = null;
+let lastCheckedMin = -1;
+let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
+let musicStore = {};     // {alarmId:{data:dataURL, name:str}}
+let previewCtx = null, previewTimer = null;
+
+// ───────────────────────────────────────────
+// INIT
+// ───────────────────────────────────────────
+function init() {
+  loadData();
+  const now = new Date();
+  calY = now.getFullYear(); calM = now.getMonth();
+  renderAlarms();
+  renderCalAlarmList();
+  renderCalendar();
+  updateHolidayStatus();
+  startClock();
+  setInterval(checkAlarms, 5000);
+  setInterval(updateNextInfo, 60000);
+  updateNextInfo();
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  // weekday btns
+  document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
+  // time inputs: live validation
+  document.getElementById('t-h').addEventListener('input', function () { clampNum(this, 0, 23); });
+  document.getElementById('t-m').addEventListener('input', function () { clampNum(this, 0, 59); });
+}
+
+function clampNum(input, min, max) {
+  const v = parseInt(input.value);
+  if (isNaN(v)) return;
+  if (v < min) input.value = min;
+  if (v > max) input.value = max;
+}
+
+// ───────────────────────────────────────────
+// PERSIST
+// ───────────────────────────────────────────
+function saveData() {
+  localStorage.setItem('sa_alarms', JSON.stringify(alarms));
+  localStorage.setItem('sa_holidays', JSON.stringify(holidays));
+  localStorage.setItem('sa_overrides', JSON.stringify(overrides));
+  localStorage.setItem('sa_snooze', snoozeMin);
+  try { localStorage.setItem('sa_music', JSON.stringify(musicStore)); } catch (e) { showSnack('音楽データが大きすぎます'); }
+}
+function loadData() {
+  try {
+    alarms = JSON.parse(localStorage.getItem('sa_alarms') || '[]');
+    holidays = JSON.parse(localStorage.getItem('sa_holidays') || '{}');
+    overrides = JSON.parse(localStorage.getItem('sa_overrides') || '{}');
+    snoozeMin = parseInt(localStorage.getItem('sa_snooze') || '10');
+    musicStore = JSON.parse(localStorage.getItem('sa_music') || '{}');
+  } catch (e) { alarms = []; holidays = {}; overrides = {}; musicStore = {}; }
+  document.getElementById('snooze-sel').value = snoozeMin;
+  document.getElementById('snooze-disp').textContent = snoozeMin;
+}
+
+// ───────────────────────────────────────────
+// CLOCK HEADER
+// ───────────────────────────────────────────
+function startClock() {
+  const el = document.getElementById('hdr-clock');
+  function tick() {
+    const n = new Date();
+    el.textContent = pad(n.getHours()) + ':' + pad(n.getMinutes()) + ':' + pad(n.getSeconds());
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ───────────────────────────────────────────
+// TABS
+// ───────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', ['alarms', 'calendar', 'settings'][i] === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('add-bar').style.display = name === 'alarms' ? '' : 'none';
+  if (name === 'calendar') { renderCalAlarmList(); renderCalendar(); }
+}
+
+// ───────────────────────────────────────────
+// RENDER ALARMS
+// ───────────────────────────────────────────
+function renderAlarms() {
+  const el = document.getElementById('alarm-list');
+  if (!alarms.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏰</div>アラームがありません<br>右下の ＋ から追加してください</div>`;
+    return;
+  }
+  const DN = ['日','月','火','水','木','金','土'];
+  el.innerHTML = alarms.map(a => {
+    const days = a.days?.length ? a.days.map(d => DN[d]).join('・') : '1回のみ';
+    const tags = [];
+    if (a.skipHolidays) tags.push(`<span class="atag holiday">祝日OFF</span>`);
+    if (a.sound === 'music' && musicStore[a.id]) tags.push(`<span class="atag music">🎵 ${esc(musicStore[a.id].name)}</span>`);
+    return `<div class="alarm-card${a.enabled ? '' : ' disabled'}" id="acard-${a.id}">
+      <div class="alarm-card-left">
+        <div class="alarm-time-big">${esc(a.time)}</div>
+        <div class="alarm-subtitle">${esc(a.label || '（ラベルなし）')} — ${days}</div>
+        <div class="alarm-tags">${tags.join('')}</div>
+      </div>
+      <div class="alarm-card-right">
+        <label class="sw">
+          <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAlarm('${a.id}')">
+          <div class="sw-track"></div>
+          <div class="sw-thumb"></div>
+        </label>
+        <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
+        <button class="icon-btn del" onclick="deleteAlarm('${a.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ───────────────────────────────────────────
+// MODAL OPEN / CLOSE
+// ───────────────────────────────────────────
+function openModal(id = null) {
+  document.getElementById('edit-id').value = id || '';
+  document.getElementById('sheet-title').textContent = id ? 'アラームを編集' : 'アラームを追加';
+  document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('sel'));
+  document.querySelectorAll('.sound-opt').forEach(s => s.classList.remove('sel'));
+  document.querySelector('.sound-opt[data-s="beep"]').classList.add('sel');
+  document.getElementById('music-section').style.display = 'none';
+
+  if (id) {
+    const a = alarms.find(x => x.id === id);
+    if (a) {
+      const [h, m] = a.time.split(':').map(Number);
+      document.getElementById('t-h').value = h;
+      document.getElementById('t-m').value = m;
+      clockH = h; clockM = m;
+      document.getElementById('alarm-label').value = a.label || '';
+      (a.days || []).forEach(d => { const b = document.querySelector(`.wd-btn[data-d="${d}"]`); if (b) b.classList.add('sel'); });
+      document.getElementById('skip-hol').checked = a.skipHolidays !== false;
+      const so = document.querySelector(`.sound-opt[data-s="${a.sound || 'beep'}"]`);
+      if (so) { document.querySelectorAll('.sound-opt').forEach(s => s.classList.remove('sel')); so.classList.add('sel'); }
+      if (a.sound === 'music') {
+        document.getElementById('music-section').style.display = '';
+        document.getElementById('music-name').textContent = musicStore[id]?.name || 'ファイルを選択…';
+      }
+    }
+  } else {
+    document.getElementById('t-h').value = 7;
+    document.getElementById('t-m').value = 0;
+    clockH = 7; clockM = 0;
+    document.getElementById('alarm-label').value = '';
+    document.getElementById('skip-hol').checked = true;
+    [1,2,3,4,5].forEach(d => document.querySelector(`.wd-btn[data-d="${d}"]`).classList.add('sel'));
+  }
+  // Reset to keyboard mode
+  document.getElementById('time-kb-mode').style.display = '';
+  document.getElementById('time-clock-mode').style.display = 'none';
+  document.getElementById('alarm-sheet').classList.add('open');
+}
+function closeModal() { document.getElementById('alarm-sheet').classList.remove('open'); }
+
+// ───────────────────────────────────────────
+// SAVE / DELETE / TOGGLE ALARM
+// ───────────────────────────────────────────
+function saveAlarm() {
+  const isClockMode = document.getElementById('time-clock-mode').style.display !== 'none';
+  let h, m;
+  if (isClockMode) { h = clockH; m = clockM; }
+  else {
+    h = parseInt(document.getElementById('t-h').value);
+    m = parseInt(document.getElementById('t-m').value);
+  }
+  if (isNaN(h) || h < 0 || h > 23 || isNaN(m) || m < 0 || m > 59) {
+    showSnack('時刻を正しく入力してください（時:0〜23、分:0〜59）'); return;
+  }
+  const id = document.getElementById('edit-id').value || genId();
+  const time = pad(h) + ':' + pad(m);
+  const label = document.getElementById('alarm-label').value.trim();
+  const days = [...document.querySelectorAll('.wd-btn.sel')].map(b => parseInt(b.dataset.d));
+  const skipHolidays = document.getElementById('skip-hol').checked;
+  const sound = document.querySelector('.sound-opt.sel')?.dataset.s || 'beep';
+
+  // Move pending music data to final id
+  if (sound === 'music' && musicStore['__pending__']) {
+    musicStore[id] = musicStore['__pending__'];
+    delete musicStore['__pending__'];
+  }
+
+  const idx = alarms.findIndex(a => a.id === id);
+  const alarm = { id, time, label, days, skipHolidays, sound, enabled: true };
+  if (idx >= 0) { alarm.enabled = alarms[idx].enabled; alarms[idx] = alarm; }
+  else alarms.push(alarm);
+  alarms.sort((a, b) => a.time.localeCompare(b.time));
+  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); closeModal(); updateNextInfo();
+  showSnack(idx >= 0 ? '更新しました' : '追加しました');
+}
+
+function deleteAlarm(id) {
+  if (!confirm('このアラームを削除しますか？')) return;
+  alarms = alarms.filter(a => a.id !== id);
+  delete overrides[id]; delete musicStore[id];
+  if (selAlarmId === id) selAlarmId = null;
+  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
+  showSnack('削除しました');
+}
+
+function toggleAlarm(id) {
+  const a = alarms.find(x => x.id === id);
+  if (a) { a.enabled = !a.enabled; saveData(); renderAlarms(); updateNextInfo(); }
+}
+
+// ───────────────────────────────────────────
+// SOUND
+// ───────────────────────────────────────────
+function selSound(el) {
+  document.querySelectorAll('.sound-opt').forEach(s => s.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('music-section').style.display = el.dataset.s === 'music' ? '' : 'none';
+}
+
+function previewSound(type, e) {
+  e.stopPropagation();
+  if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
+  if (previewCtx) { try { previewCtx.close(); } catch (e) {} previewCtx = null; }
+  previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playTones(previewCtx, type, 3);
+  previewTimer = setTimeout(() => { try { previewCtx?.close(); } catch (e) {} previewCtx = null; }, 4000);
+}
+
+function onMusicFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const editId = document.getElementById('edit-id').value;
+  const storeKey = editId || '__pending__';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    musicStore[storeKey] = { data: ev.target.result, name: file.name };
+    document.getElementById('music-name').textContent = file.name;
+    try { saveData(); } catch (err) { showSnack('ファイルが大きすぎる可能性があります'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ───────────────────────────────────────────
+// TIME INPUT TOGGLE
+// ───────────────────────────────────────────
+function toggleTimeMode() {
+  const kb = document.getElementById('time-kb-mode');
+  const cl = document.getElementById('time-clock-mode');
+  if (kb.style.display !== 'none') {
+    // → 時計モードへ
+    const h = parseInt(document.getElementById('t-h').value);
+    const m = parseInt(document.getElementById('t-m').value);
+    if (!isNaN(h) && h >= 0 && h <= 23) clockH = h;
+    if (!isNaN(m) && m >= 0 && m <= 59) clockM = m;
+    clockMode = 'h';
+    kb.style.display = 'none'; cl.style.display = '';
+    setClockMode('h');
+  } else {
+    // → キーボードモードへ
+    document.getElementById('t-h').value = clockH;
+    document.getElementById('t-m').value = clockM;
+    cl.style.display = 'none'; kb.style.display = '';
+  }
+}
+
+// ───────────────────────────────────────────
+// CLOCK PICKER
+// ───────────────────────────────────────────
+function setClockMode(mode) {
+  clockMode = mode;
+  document.getElementById('btn-ch').classList.toggle('active', mode === 'h');
+  document.getElementById('btn-cm').classList.toggle('active', mode === 'm');
+  drawClock();
+}
+
+function drawClock() {
+  const face = document.getElementById('clock-face');
+  if (!face) return;
+  face.querySelectorAll('.clock-num').forEach(n => n.remove());
+  const hand = document.getElementById('c-hand');
+  const r = face.offsetWidth / 2 || 110;
+  let ang;
+
+  if (clockMode === 'h') {
+    // Outer ring: 1–12(=0), Inner ring: 13–23
+    for (let i = 0; i < 24; i++) {
+      const isInner = i >= 12;
+      const nr = r * (isInner ? 0.52 : 0.76);
+      const a = ((i % 12) / 12) * 2 * Math.PI - Math.PI / 2;
+      const el = document.createElement('div');
+      el.className = 'clock-num' + (clockH === i ? ' active' : '');
+      el.textContent = i === 0 ? '0' : String(i);
+      el.style.cssText = `left:${r + nr * Math.cos(a)}px;top:${r + nr * Math.sin(a)}px;font-size:${isInner ? '11' : '13'}px;`;
+      el.addEventListener('click', ev => { ev.stopPropagation(); clockH = i; setClockMode('h'); });
+      face.appendChild(el);
+    }
+    ang = ((clockH % 12) / 12) * 360 - 90;
+    hand.style.height = clockH >= 12 ? '52px' : '72px';
+  } else {
+    for (let i = 0; i < 12; i++) {
+      const v = i * 5;
+      const a = (i / 12) * 2 * Math.PI - Math.PI / 2;
+      const nr = r * 0.76;
+      const el = document.createElement('div');
+      el.className = 'clock-num' + (Math.round(clockM / 5) % 12 === i ? ' active' : '');
+      el.textContent = pad(v);
+      el.style.cssText = `left:${r + nr * Math.cos(a)}px;top:${r + nr * Math.sin(a)}px;`;
+      el.addEventListener('click', ev => { ev.stopPropagation(); clockM = v; drawClock(); });
+      face.appendChild(el);
+    }
+    ang = (clockM / 60) * 360 - 90;
+    hand.style.height = '80px';
+  }
+  hand.style.transform = `translateX(-50%) rotate(${ang + 90}deg)`;
+  hand.style.marginTop = `-${parseInt(hand.style.height)}px`;
+  hand.style.marginLeft = '-1px';
+  document.getElementById('clock-disp').textContent = pad(clockH) + ':' + pad(clockM);
+}
+
+function cDragStart(e) { cDragging = true; cProcess(e); }
+function cDragMove(e) { if (!cDragging) return; cProcess(e); }
+function cDragEnd(e) {
+  cDragging = false;
+  if (clockMode === 'h') setClockMode('m');
+}
+function cProcess(e) {
+  e.preventDefault();
+  const face = document.getElementById('clock-face');
+  const rect = face.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+  const pt = e.touches ? e.touches[0] : e;
+  const dx = pt.clientX - cx, dy = pt.clientY - cy;
+  let ang = Math.atan2(dy, dx) + Math.PI / 2;
+  if (ang < 0) ang += 2 * Math.PI;
+  if (clockMode === 'h') {
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const inner = dist < rect.width * 0.3;
+    let hv = Math.round((ang / (2 * Math.PI)) * 12) % 12;
+    clockH = inner ? hv + 12 : hv;
+    if (clockH === 24) clockH = 0;
+  } else {
+    clockM = Math.round((ang / (2 * Math.PI)) * 60) % 60;
+  }
+  drawClock();
+}
+
+// ───────────────────────────────────────────
+// CALENDAR
+// ───────────────────────────────────────────
+function renderCalAlarmList() {
+  const el = document.getElementById('cal-alarm-list');
+  if (!alarms.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">アラームを登録してください</div>';
+    selAlarmId = null; return;
+  }
+  el.innerHTML = alarms.map(a =>
+    `<div class="cal-alarm-item${selAlarmId === a.id ? ' sel' : ''}" onclick="selCalAlarm('${a.id}')">
+      <div class="cal-alarm-item-l">
+        <div class="cal-ai-dot"></div>
+        <div><div class="cal-ai-time">${esc(a.time)}</div><div class="cal-ai-name">${esc(a.label || '（ラベルなし）')}</div></div>
+      </div>
+      <div class="cal-ai-status">${a.enabled ? '有効' : '無効'}</div>
+    </div>`
+  ).join('');
+}
+
+function selCalAlarm(id) {
+  selAlarmId = selAlarmId === id ? null : id;
+  renderCalAlarmList(); renderCalendar();
+  document.getElementById('cal-hint').textContent = selAlarmId
+    ? '② 下のカレンダーで日付をタップ → デフォルト → 強制ON → 強制OFF → デフォルト と切り替わります。'
+    : 'アラームを選択して、下のカレンダーで日付をタップするとON/OFFを個別設定できます。';
+}
+
+function changeMonth(d) {
+  calM += d;
+  if (calM > 11) { calM = 0; calY++; }
+  if (calM < 0) { calM = 11; calY--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent = `${calY}年${calM + 1}月`;
+  const grid = document.getElementById('cal-grid');
+  const today = new Date();
+  const firstDow = new Date(calY, calM, 1).getDay();
+  const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+  const prevDays = new Date(calY, calM, 0).getDate();
+  let html = '';
+
+  for (let i = firstDow - 1; i >= 0; i--) {
+    html += `<div class="cal-cell other-month"><span>${prevDays - i}</span></div>`;
+  }
+
+  const selA = selAlarmId ? alarms.find(a => a.id === selAlarmId) : null;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = fmtDate(calY, calM + 1, d);
+    const dow = new Date(calY, calM, d).getDay();
+    const isToday = today.getFullYear() === calY && today.getMonth() === calM && today.getDate() === d;
+    const isHol = !!holidays[ds];
+    let cls = 'cal-cell';
+    if (isToday) cls += ' today';
+    if (isHol || dow === 0) cls += ' sunday holiday';
+    else if (dow === 6) cls += ' saturday';
+
+    let dotHtml = '';
+    if (selA && selA.enabled) {
+      const ov = (overrides[selA.id] || {})[ds];
+      const def = willFireByDefault(selA, dow, isHol);
+      if (ov === true) { cls += ' s-force-on'; dotHtml = `<div class="cell-dot on"></div>`; }
+      else if (ov === false) { cls += ' s-force-off'; dotHtml = `<div class="cell-dot off"></div>`; }
+      else if (def) { cls += ' s-default-on'; dotHtml = `<div class="cell-dot on"></div>`; }
+      else { cls += ' s-default-off'; }
+    }
+
+    const holDot = isHol ? `<div class="cell-dot hol"></div>` : '';
+    const clickAttr = selAlarmId ? `onclick="tapDate('${ds}')"` : '';
+    html += `<div class="${cls}" ${clickAttr}><span>${d}</span>${dotHtml}${holDot}</div>`;
+  }
+
+  const total = firstDow + daysInMonth;
+  const rem = (7 - (total % 7)) % 7;
+  for (let i = 1; i <= rem; i++) html += `<div class="cal-cell other-month"><span>${i}</span></div>`;
+  grid.innerHTML = html;
+}
+
+function tapDate(ds) {
+  if (!selAlarmId) return;
+  if (!overrides[selAlarmId]) overrides[selAlarmId] = {};
+  const cur = overrides[selAlarmId][ds];
+  if (cur === undefined) overrides[selAlarmId][ds] = true;
+  else if (cur === true) overrides[selAlarmId][ds] = false;
+  else delete overrides[selAlarmId][ds];
+  saveData(); renderCalendar(); updateNextInfo();
+}
+
+function willFireByDefault(a, dow, isHol) {
+  const dayOk = !a.days || !a.days.length || a.days.includes(dow);
+  return dayOk && !(a.skipHolidays && isHol);
+}
+
+// ───────────────────────────────────────────
+// ALARM ENGINE
+// ───────────────────────────────────────────
+function checkAlarms() {
+  const now = new Date();
+  const min = now.getHours() * 60 + now.getMinutes();
+  if (min === lastCheckedMin) return;
+  lastCheckedMin = min;
+  if (firingAlarm) return;
+
+  const ds = fmtDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const dow = now.getDay();
+  const isHol = !!holidays[ds];
+  const timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+  for (const a of alarms) {
+    if (!a.enabled || a.time !== timeStr) continue;
+    const ov = (overrides[a.id] || {})[ds];
+    if (ov === false) continue;
+    if (ov === true || willFireByDefault(a, dow, isHol)) { fireAlarm(a); return; }
+  }
+}
+
+function fireAlarm(a) {
+  firingAlarm = a;
+  document.getElementById('firing-time').textContent = a.time;
+  document.getElementById('firing-label').textContent = a.label || '起床の時間です';
+  document.getElementById('snooze-disp').textContent = snoozeMin;
+  document.getElementById('firing-overlay').classList.add('open');
+  startAudio(a);
+  const card = document.getElementById('acard-' + a.id);
+  if (card) card.classList.add('firing');
+  if (!a.days || !a.days.length) { a.enabled = false; saveData(); renderAlarms(); }
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('⏰ ' + (a.label || '起床'), { body: a.time });
+  }
+  updateNextInfo();
+}
+
+function stopAlarm() {
+  stopAudio();
+  document.getElementById('firing-overlay').classList.remove('open');
+  if (firingAlarm) {
+    const card = document.getElementById('acard-' + firingAlarm.id);
+    if (card) card.classList.remove('firing');
+  }
+  firingAlarm = null;
+  // reset so the same minute won't immediately re-fire
+  lastCheckedMin = new Date().getHours() * 60 + new Date().getMinutes();
+}
+
+function snoozeAlarm() {
+  const a = firingAlarm;
+  stopAlarm();
+  if (!a) return;
+  setTimeout(() => fireAlarm(a), snoozeMin * 60 * 1000);
+  showSnack(snoozeMin + '分後に再アラーム');
+}
+
+// ───────────────────────────────────────────
+// AUDIO
+// ───────────────────────────────────────────
+function startAudio(a) {
+  stopAudio();
+  if (a.sound === 'music' && musicStore[a.id]?.data) {
+    firingAudio = new Audio(musicStore[a.id].data);
+    firingAudio.loop = true;
+    firingAudio.play().catch(() => startBeepLoop(a.sound));
+  } else {
+    startBeepLoop(a.sound || 'beep');
+  }
+}
+
+function startBeepLoop(type) {
+  firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function loop() {
+    if (!firingAlarm) return;
+    const dur = playTones(firingCtx, type, 8);
+    loopTimer = setTimeout(loop, (dur + 0.5) * 1000);
+  }
+  loop();
+}
+
+function playTones(ctx, type, seconds) {
+  const pats = {
+    beep: [{ f: 880, d: .18, g: .3 }, { f: 880, d: .18, g: .3 }],
+    gentle: [{ f: 523, d: .32, g: .22 }, { f: 659, d: .32, g: .22 }, { f: 784, d: .32, g: .22 }],
+    urgent: [{ f: 1200, d: .1, g: .32 }, { f: 900, d: .1, g: .32 }, { f: 1200, d: .1, g: .32 }, { f: 800, d: .1, g: .32 }]
+  };
+  const pat = pats[type] || pats.beep;
+  let t = ctx.currentTime, end = t + seconds;
+  while (t < end) {
+    for (const p of pat) {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = p.f;
+      osc.type = type === 'urgent' ? 'sawtooth' : 'sine';
+      gain.gain.setValueAtTime(p.g, t);
+      gain.gain.exponentialRampToValueAtTime(.001, t + p.d);
+      osc.start(t); osc.stop(t + p.d + .01);
+      t += p.d + .08;
+    }
+    t += .28;
+  }
+  return t - ctx.currentTime;
+}
+
+function stopAudio() {
+  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
+  if (firingAudio) { try { firingAudio.pause(); } catch (e) {} firingAudio = null; }
+  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
+}
+
+// ───────────────────────────────────────────
+// HOLIDAYS
+// ───────────────────────────────────────────
+async function fetchHolidays() {
+  const btn = document.getElementById('btn-fetch');
+  btn.textContent = '取得中…'; btn.disabled = true;
+  try {
+    const res = await fetch('https://holidays-jp.github.io/api/v1/date.json');
+    if (!res.ok) throw new Error();
+    holidays = await res.json();
+    showSnack(Object.keys(holidays).length + '件の祝日を取得しました');
+  } catch (e) {
+    holidays = builtinHolidays();
+    showSnack('オフラインデータ（' + Object.keys(holidays).length + '件）を使用');
+  }
+  saveData(); renderCalendar(); updateHolidayStatus();
+  btn.textContent = '再取得'; btn.disabled = false;
+}
+
+function resetHolidays() {
+  if (!confirm('祝日データを削除しますか？')) return;
+  holidays = {}; saveData(); renderCalendar(); updateHolidayStatus();
+  showSnack('削除しました');
+}
+
+function updateHolidayStatus() {
+  const n = Object.keys(holidays).length;
+  document.getElementById('holiday-status').textContent = n ? `✓ ${n}件の祝日データを保持中` : '祝日データなし';
+}
+
+function builtinHolidays() {
+  return {
+    "2024-01-01":"元日","2024-01-08":"成人の日","2024-02-11":"建国記念の日","2024-02-12":"振替休日",
+    "2024-02-23":"天皇誕生日","2024-03-20":"春分の日","2024-04-29":"昭和の日","2024-05-03":"憲法記念日",
+    "2024-05-04":"みどりの日","2024-05-05":"こどもの日","2024-05-06":"振替休日","2024-07-15":"海の日",
+    "2024-08-11":"山の日","2024-08-12":"振替休日","2024-09-16":"敬老の日","2024-09-22":"秋分の日",
+    "2024-09-23":"振替休日","2024-10-14":"スポーツの日","2024-11-03":"文化の日","2024-11-04":"振替休日",
+    "2024-11-23":"勤労感謝の日",
+    "2025-01-01":"元日","2025-01-13":"成人の日","2025-02-11":"建国記念の日","2025-02-23":"天皇誕生日",
+    "2025-02-24":"振替休日","2025-03-20":"春分の日","2025-04-29":"昭和の日","2025-05-03":"憲法記念日",
+    "2025-05-04":"みどりの日","2025-05-05":"こどもの日","2025-05-06":"振替休日","2025-07-21":"海の日",
+    "2025-08-11":"山の日","2025-09-15":"敬老の日","2025-09-23":"秋分の日","2025-10-13":"スポーツの日",
+    "2025-11-03":"文化の日","2025-11-23":"勤労感謝の日","2025-11-24":"振替休日",
+    "2026-01-01":"元日","2026-01-12":"成人の日","2026-02-11":"建国記念の日","2026-02-23":"天皇誕生日",
+    "2026-03-20":"春分の日","2026-04-29":"昭和の日","2026-05-03":"憲法記念日","2026-05-04":"みどりの日",
+    "2026-05-05":"こどもの日","2026-07-20":"海の日","2026-08-11":"山の日","2026-09-21":"敬老の日",
+    "2026-09-23":"秋分の日","2026-10-12":"スポーツの日","2026-11-03":"文化の日","2026-11-23":"勤労感謝の日"
+  };
+}
+
+// ───────────────────────────────────────────
+// NEXT ALARM INFO
+// ───────────────────────────────────────────
+function updateNextInfo() {
+  const el = document.getElementById('next-alarm-info');
+  const next = calcNext();
+  if (!next) { el.innerHTML = '次のアラームなし'; return; }
+  const diff = next.date - new Date();
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  el.innerHTML = `次: <strong>${next.time}</strong>（${h > 0 ? h + '時間' : ''}${m}分後）`;
+}
+
+function calcNext() {
+  const now = new Date(); let earliest = null;
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(now); d.setDate(d.getDate() + i);
+    const ds = fmtDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    const dow = d.getDay(); const isHol = !!holidays[ds];
+    for (const a of alarms) {
+      if (!a.enabled) continue;
+      const [ah, am] = a.time.split(':').map(Number);
+      const at = new Date(d); at.setHours(ah, am, 0, 0);
+      if (at <= now) continue;
+      const ov = (overrides[a.id] || {})[ds];
+      if (ov === false) continue;
+      if (ov !== true && !willFireByDefault(a, dow, isHol)) continue;
+      if (!earliest || at < earliest.date) earliest = { date: at, time: a.time };
+    }
+    if (earliest) break;
+  }
+  return earliest;
+}
+
+// ───────────────────────────────────────────
+// SETTINGS
+// ───────────────────────────────────────────
+function saveSnooze() {
+  snoozeMin = parseInt(document.getElementById('snooze-sel').value);
+  document.getElementById('snooze-disp').textContent = snoozeMin;
+  saveData();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ alarms, holidays, overrides, snoozeMin, v: 2 }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `smart-alarm-${fmtDate(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate())}.json`;
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (d.alarms) alarms = d.alarms;
+      if (d.holidays) holidays = d.holidays;
+      if (d.overrides) overrides = d.overrides;
+      if (d.snoozeMin) { snoozeMin = d.snoozeMin; document.getElementById('snooze-sel').value = snoozeMin; }
+      saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateHolidayStatus();
+      showSnack('インポートしました');
+    } catch (err) { showSnack('読込みに失敗しました'); }
+  };
+  reader.readAsText(file);
+}
+
+// ───────────────────────────────────────────
+// UTILS
+// ───────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+function fmtDate(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function showSnack(msg) {
+  const el = document.getElementById('snackbar');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
