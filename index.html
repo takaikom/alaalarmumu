@@ -38,7 +38,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
 
 /* TABS */
-.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:53px;z-index:49;}
+.user-tabs-wrap{display:flex;align-items:center;overflow-x:auto;padding:0 16px;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:53px;z-index:49;min-height:40px;}
+.user-tabs-wrap::-webkit-scrollbar{display:none;}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:93px;z-index:48;}
 .tab-btn{flex:1;padding:10px 0;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color .15s,border-color .15s;}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
 
@@ -49,7 +51,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* ALARM CARDS */
 .alarm-list{display:flex;flex-direction:column;gap:8px;}
-.alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s;}
+.alarm-swipe-wrap{position:relative;border-radius:14px;overflow:hidden;}
+.alarm-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
+.alarm-swipe-del.visible{opacity:1;}
+.alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s,transform .1s;position:relative;touch-action:pan-y;user-select:none;}
+.alarm-swipe-wrap:hover .alarm-hover-del{opacity:1;}
+.alarm-hover-del{position:absolute;top:50%;right:12px;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;background:var(--red);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;z-index:2;}
+@media (hover: none){.alarm-hover-del{display:none;}}
 .alarm-card.disabled{opacity:.42;}
 .alarm-card.firing{border-color:var(--accent);animation:cpulse 1s ease-in-out infinite alternate;}
 @keyframes cpulse{from{background:var(--surface);}to{background:rgba(216,90,48,.1);}}
@@ -259,18 +267,19 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 /* TIMER - フェーズ編集 */
 .phase-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
-.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.phase-item-top{display:flex;align-items:center;gap:8px;padding:8px 10px;}
-.phase-announce-input{width:100%;border:none;border-top:1px solid var(--border);border-radius:0;background:var(--surface2);font-family:var(--font);font-size:13px;color:var(--text);padding:8px 10px;outline:none;}
-.phase-announce-input:focus{background:var(--surface3);}
-.phase-announce-input::placeholder{color:var(--text3);}
-.phase-drag{color:var(--text3);font-size:18px;cursor:grab;padding:0 2px;touch-action:none;}
-.phase-sep{color:var(--text3);font-size:12px;flex-shrink:0;}
-/* 秒数入力スピナー（スマホ対応） */
-.phase-sec-wrap{display:flex;align-items:center;gap:3px;flex-shrink:0;}
+.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;}
+.phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
+.phase-item-top{display:flex;align-items:center;gap:6px;padding:8px 10px;}
+.phase-num{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;min-width:18px;}
+.phase-drag{color:var(--text3);font-size:18px;cursor:grab;padding:0 2px;touch-action:none;flex-shrink:0;}
+.phase-announce-inline{flex:1;min-width:0;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--font);font-size:13px;color:var(--text);padding:4px 8px;outline:none;height:30px;}
+.phase-announce-inline:focus{border-color:var(--accent);background:var(--surface3);}
+.phase-announce-inline::placeholder{color:var(--text3);}
+.phase-interval-wrap{display:flex;align-items:center;gap:3px;flex-shrink:0;}
 .phase-sec-input{width:46px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--mono);font-size:14px;color:var(--text);text-align:center;padding:4px 0;outline:none;-moz-appearance:textfield;}
 .phase-sec-input::-webkit-outer-spin-button,.phase-sec-input::-webkit-inner-spin-button{-webkit-appearance:none;}
 .phase-sec-input:focus{border-color:var(--accent);}
+.phase-sep{color:var(--text3);font-size:12px;flex-shrink:0;}
 .phase-sec-spin-col{display:flex;flex-direction:column;gap:2px;}
 .phase-sec-spin-btn{
   width:28px;height:20px;
@@ -282,12 +291,22 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   touch-action:manipulation;min-width:28px;min-height:20px;
 }
 .phase-sec-spin-btn:active{background:var(--surface3);color:var(--text);}
-.phase-del{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;}
+.phase-del{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s;}
+.phase-del:hover{color:var(--red);}
 .phase-del:active{color:var(--red);}
+.phase-item.active-phase{border-color:var(--accent);background:rgba(216,90,48,.04);}
+.phase-item.active-phase .phase-num{color:var(--accent);font-weight:700;}
+.phase-item.drag-over-top{border-top:2.5px solid var(--accent);}
+.phase-item.drag-over-bottom{border-bottom:2.5px solid var(--accent);}
+.phase-skip-btn{padding:2px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:11px;cursor:pointer;white-space:nowrap;font-family:var(--font);}
+.phase-skip-btn:active{background:var(--accent-l);color:var(--accent);border-color:var(--accent);}
 .btn-add-phase{width:100%;padding:11px;border-radius:12px;border:1.5px dashed var(--border2);background:transparent;color:var(--text3);font-family:var(--font);font-size:13px;cursor:pointer;transition:border-color .12s,color .12s;}
 .btn-add-phase:active{border-color:var(--accent);color:var(--accent);}
+.timer-skip-controls{display:flex;gap:6px;margin-top:8px;}
+.timer-skip-btn{flex:1;padding:9px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer;transition:background .12s;}
+.timer-skip-btn:active{background:var(--surface3);}
 
-.timer-display-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px 20px 20px;text-align:center;margin-top:16px;}
+.timer-display-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px 20px 20px;text-align:center;}
 .timer-phase-name{font-size:16px;font-weight:700;color:var(--text);min-height:24px;margin-bottom:4px;transition:color .3s;}
 .timer-phase-progress{font-size:11px;color:var(--text3);margin-bottom:10px;min-height:16px;}
 .timer-time{font-family:var(--mono);font-size:72px;font-weight:400;letter-spacing:-.02em;color:var(--accent);line-height:1;margin-bottom:16px;transition:color .3s;}
@@ -308,10 +327,23 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .back-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
 .back-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .back-btn:active{background:var(--surface3);}
-.timer-detail-title{font-size:16px;font-weight:700;flex:1;}
+.timer-detail-title{font-size:16px;font-weight:700;flex:1;cursor:pointer;}
+.timer-detail-title:hover{color:var(--accent);}
+
+/* ユーザータブ */
+.user-tab-btn{flex-shrink:0;padding:8px 14px;font-size:13px;font-weight:500;color:var(--text3);border:none;background:transparent;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap;font-family:var(--font);user-select:none;touch-action:pan-x;-webkit-tap-highlight-color:transparent;}
+.user-tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.user-tab-btn.drag-dragging{opacity:0.3;}
+.user-tab-btn.drag-over{border-bottom-color:var(--blue);color:var(--blue);}
+.user-tab-ghost{position:fixed;pointer-events:none;z-index:9999;padding:8px 14px;font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-l);border:1.5px solid var(--accent);border-radius:8px;white-space:nowrap;font-family:var(--font);box-shadow:0 4px 16px rgba(0,0,0,.18);opacity:.92;}
+.add-user-tab-btn{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1.5px dashed var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;margin-left:6px;-webkit-tap-highlight-color:transparent;}
+.add-user-tab-btn:active{border-color:var(--accent);color:var(--accent);}
 
 /* GAS SYNC */
 .gas-sync-info{font-size:10px;color:var(--text3);padding:4px 0 0;text-align:right;}
+.hdr-sync-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s;font-weight:700;}
+.hdr-sync-btn:active{background:var(--accent-l);color:var(--accent);}
+.hdr-sync-btn:disabled{opacity:.35;cursor:default;}
 </style>
 </head>
 <body>
@@ -319,11 +351,14 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <header class="app-header">
   <div class="app-title">Smart<span>Alarm</span></div>
   <div class="header-right">
+    <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="GASへアップロード（完全同期）">↑</button>
+    <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASからダウンロード（マージ）">↓</button>
     <div class="header-clock" id="hdr-clock"></div>
     <div class="sync-dot" id="sync-dot" title="ローカル保存"></div>
   </div>
 </header>
 
+<div class="user-tabs-wrap" id="user-tabs-wrap"></div>
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('alarms')">アラーム</button>
   <button class="tab-btn" onclick="switchTab('calendar')">カレンダー</button>
@@ -375,32 +410,10 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   <div id="timer-detail-view" style="display:none;">
     <div class="back-row">
       <button class="back-btn" onclick="showTimerList()">‹</button>
-      <div class="timer-detail-title" id="timer-detail-title">タイマー</div>
+      <div class="timer-detail-title" id="timer-detail-title" onclick="renameCurrentTimer()" title="タップして名前を変更">タイマー</div>
     </div>
 
-    <!-- ── フェーズ編集 ── -->
-    <div class="sec-label">ステップの設定</div>
-    <div id="phase-list" class="phase-list"></div>
-    <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
-
-    <!-- ── アナウンス設定 ── -->
-    <div class="sec-label" style="margin-top:16px;">アナウンス</div>
-    <div class="settings-card">
-      <div class="settings-row">
-        <div><div class="settings-row-title">音声アナウンス</div><div class="settings-row-sub">Web Speech API（日本語）</div></div>
-        <label class="sw"><input type="checkbox" id="announce-speech" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
-      </div>
-      <div class="settings-row">
-        <div><div class="settings-row-title">効果音（ビープ）</div><div class="settings-row-sub">フェーズ切替時に鳴らす</div></div>
-        <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
-      </div>
-      <div class="settings-row">
-        <div><div class="settings-row-title">カウントダウン音</div><div class="settings-row-sub">1秒ごとのカウント音</div></div>
-        <label class="sw"><input type="checkbox" id="announce-tick" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
-      </div>
-    </div>
-
-    <!-- ── タイマー本体 ── -->
+    <!-- ── カウントダウン表示（上に移動） ── -->
     <div class="timer-display-card">
       <div class="timer-phase-name" id="timer-phase-name">スタートを押してください</div>
       <div class="timer-phase-progress" id="timer-phase-progress"></div>
@@ -409,12 +422,38 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <div class="timer-total-bar" id="timer-total-bar"></div>
       </div>
       <div class="timer-total-info" id="timer-total-info"></div>
+      <div class="timer-skip-controls">
+        <button class="timer-skip-btn" onclick="timerSkipPrev()">◀ 前のステップ</button>
+        <button class="timer-skip-btn" onclick="timerSkipNext()">次のステップ ▶</button>
+      </div>
     </div>
 
     <!-- ── コントロール ── -->
     <div class="timer-controls">
       <button class="timer-btn secondary" id="timer-reset-btn" onclick="timerReset()">リセット</button>
       <button class="timer-btn primary" id="timer-start-btn" onclick="timerStartStop()">▶ スタート</button>
+    </div>
+
+    <!-- ── フェーズ編集 ── -->
+    <div class="sec-label" style="margin-top:16px;">ステップの設定</div>
+    <div id="phase-list" class="phase-list"></div>
+    <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
+
+    <!-- ── 音の設定 ── -->
+    <div class="sec-label" style="margin-top:16px;">音の設定</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <div><div class="settings-row-title">音声アナウンス</div><div class="settings-row-sub">Web Speech API（日本語）</div></div>
+        <label class="sw"><input type="checkbox" id="announce-speech" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-row-title">効果音（ビープ）</div><div class="settings-row-sub">ステップ切替時に鳴らす</div></div>
+        <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-row-title">カウントダウン音</div><div class="settings-row-sub">次のステップまで1秒ごとのカウント音</div></div>
+        <label class="sw"><input type="checkbox" id="announce-tick" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
     </div>
   </div>
 </div>
@@ -432,16 +471,20 @@ select.form-input option{background:var(--surface2);color:var(--text);}
       </div>
       <div style="display:flex;gap:8px;width:100%;">
         <button class="settings-btn" style="flex:1;" onclick="openGroupSheet()">グループ・ユーザー管理</button>
-        <button class="settings-btn" id="gas-sync-now-btn" onclick="syncFromRemote()" style="flex:1;">今すぐ同期</button>
       </div>
-      <div class="gas-sync-info" id="gas-sync-info" style="width:100%;display:none;"></div>
     </div>
     <div class="settings-row">
-      <div><div class="settings-row-title">GAS URL（クラウド共有）</div><div class="settings-row-sub">グループ設定で設定済みの場合に表示</div></div>
+      <div><div class="settings-row-title">GAS URL（クラウド共有）</div><div class="settings-row-sub">設定するとヘッダーの ↑↓ で同期できます</div></div>
     </div>
     <div style="padding:0 16px 12px;">
-      <input type="url" id="gas-url-input" class="form-input" placeholder="https://script.google.com/…" style="font-size:12px;height:38px;">
-      <button class="btn-primary" style="margin-top:8px;padding:10px;" onclick="saveGasUrl()">接続・同期</button>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <input type="url" id="gas-url-input" class="form-input" placeholder="https://script.google.com/…" style="font-size:12px;height:38px;flex:1;">
+        <button onclick="clearGasUrlInput()" style="width:34px;height:38px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-primary" style="flex:1;padding:10px;" onclick="saveGasUrl()">接続・同期</button>
+        <button class="settings-btn" style="color:var(--red);" onclick="disconnectGas()">接続解除</button>
+      </div>
     </div>
   </div>
 
@@ -657,6 +700,20 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
       <!-- 現在のグループのユーザー -->
       <div class="sec-label">ユーザー（現在のグループ）</div>
+      <!-- 親モード切り替え -->
+      <div class="settings-card" style="margin-bottom:10px;">
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-title">親モード</div>
+            <div class="settings-row-sub">オンにすると全ユーザーのタブを表示できます</div>
+          </div>
+          <label class="sw" id="parent-mode-sw">
+            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
+            <div class="sw-track"></div>
+            <div class="sw-thumb"></div>
+          </label>
+        </div>
+      </div>
       <div id="user-list-el" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <input type="text" id="new-user-input" class="form-input" style="flex:1;height:40px;font-size:14px;" placeholder="新しいユーザー名">
@@ -666,8 +723,14 @@ select.form-input option{background:var(--surface2);color:var(--text);}
       <!-- GAS URL -->
       <div class="sec-label">GAS URL（クラウド共有）</div>
       <div style="margin-bottom:8px;">
-        <input type="url" id="group-gas-url-input" class="form-input" style="font-size:12px;height:38px;" placeholder="https://script.google.com/…">
-        <button class="btn-primary" style="margin-top:8px;padding:10px;" onclick="saveGroupGasUrl()">このグループのURLを保存・同期</button>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+          <input type="url" id="group-gas-url-input" class="form-input" style="font-size:12px;height:38px;flex:1;" placeholder="https://script.google.com/…">
+          <button onclick="document.getElementById('group-gas-url-input').value=''" style="width:34px;height:38px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary" style="flex:1;padding:10px;" onclick="saveGroupGasUrl()">このグループのURLを保存・同期</button>
+          <button class="settings-btn" style="color:var(--red);" onclick="disconnectGroupGas()">接続解除</button>
+        </div>
       </div>
 
       <!-- GASセットアップ手順 -->
@@ -768,6 +831,11 @@ function setCurrentUserId(id) {
   d.currentUserId = id;
   setGroupCache(d);
 }
+
+function getPinnedUserId() { return localStorage.getItem('sa_pinned_user') || ''; }
+function setPinnedUserId(id) { localStorage.setItem('sa_pinned_user', id); }
+function isParentMode() { return localStorage.getItem('sa_parent_mode') === '1'; }
+function setParentMode(v) { localStorage.setItem('sa_parent_mode', v ? '1' : '0'); }
 
 // ───────────────────────────────────────────
 // MAIN STATE (per-user)
@@ -958,6 +1026,11 @@ function init() {
   if (!getCurrentGroupId()) setCurrentGroupId(groups[0].id);
 
   loadUserData();
+  // 初回起動時に自分をピン固定
+  if (!getPinnedUserId()) {
+    const uid = getCurrentUserId();
+    if (uid) setPinnedUserId(uid);
+  }
   const now = new Date();
   calY = now.getFullYear(); calM = now.getMonth();
   renderAlarms();
@@ -970,6 +1043,7 @@ function init() {
   updateNextInfo();
   renderTimerList();
   renderGroupName();
+  renderUserTabsWrap();
   document.getElementById('gas-url-input').value = getGasUrl();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -980,6 +1054,8 @@ function init() {
   tm.addEventListener('focus', function() { this.select(); });
   th.addEventListener('input', function() { clampNum(this, 0, 23); });
   tm.addEventListener('input', function() { clampNum(this, 0, 59); });
+  // ヘッダー同期ボタン表示制御
+  updateHeaderSyncBtns();
   // 自動同期（GAS URLがあれば起動時にサイレント同期）
   if (getGasUrl()) syncFromRemote(true);
 }
@@ -990,6 +1066,276 @@ function renderGroupName() {
   if (el) el.textContent = g ? g.name : '（グループ未設定）';
   const gasInput = document.getElementById('gas-url-input');
   if (gasInput) gasInput.value = getGasUrl();
+  updateHeaderSyncBtns();
+  renderUserTabsWrap();
+}
+
+function updateHeaderSyncBtns() {
+  const hasUrl = !!getGasUrl();
+  const up = document.getElementById('hdr-upload-btn');
+  const dn = document.getElementById('hdr-download-btn');
+  if (up) up.style.display = hasUrl ? '' : 'none';
+  if (dn) dn.style.display = hasUrl ? '' : 'none';
+}
+
+async function headerPushToRemote() {
+  const url = getGasUrl();
+  if (!url) { showSnack('GAS URLが設定されていません'); return; }
+  showSnack('アップロード中…');
+  await pushToRemote();
+  showSnack('アップロード完了');
+}
+
+async function headerSyncFromRemote() {
+  await syncFromRemote(false);
+  renderUserTabsWrap();
+}
+
+function clearGasUrlInput() {
+  document.getElementById('gas-url-input').value = '';
+}
+
+function disconnectGas() {
+  if (!confirm('GAS URLの接続を解除しますか？')) return;
+  const groups = loadGroups();
+  const gid = getCurrentGroupId();
+  const g = groups.find(g => g.id === gid);
+  if (g) { g.gasUrl = ''; saveGroups(groups); }
+  document.getElementById('gas-url-input').value = '';
+  setSyncDot('off');
+  renderGroupName();
+  showSnack('接続を解除しました');
+}
+
+function disconnectGroupGas() {
+  if (!confirm('このグループのGAS接続を解除しますか？')) return;
+  const groups = loadGroups();
+  const gid = getCurrentGroupId();
+  const g = groups.find(g => g.id === gid);
+  if (g) { g.gasUrl = ''; saveGroups(groups); }
+  const inp = document.getElementById('group-gas-url-input');
+  if (inp) inp.value = '';
+  document.getElementById('gas-url-input').value = '';
+  setSyncDot('off');
+  renderGroupName();
+  showSnack('接続を解除しました');
+}
+
+// ── ユーザータブ（tsuzukeru方式）──
+function renderUserTabsWrap() {
+  const wrap = document.getElementById('user-tabs-wrap');
+  if (!wrap) return;
+  const d = getGroupCache();
+  const curUid = getCurrentUserId();
+  const prevScroll = wrap.scrollLeft;
+  wrap.innerHTML = '';
+
+  const parent = isParentMode();
+  const pinnedId = getPinnedUserId() || curUid;
+  const visibleUsers = parent ? (d.users || []) : (d.users || []).filter(u => u.id === pinnedId);
+
+  let dragSrcId = null, ghost = null, isDragging = false;
+  let startX = 0, startY = 0, dragOffX = 0, dragOffY = 0;
+  let longPressTimer = null;
+
+  function moveGhost(x, y) { if (ghost) { ghost.style.left = (x - dragOffX) + 'px'; ghost.style.top = (y - dragOffY) + 'px'; } }
+
+  function getTargetUid(x, y) {
+    if (ghost) ghost.style.display = 'none';
+    const el = document.elementFromPoint(x, y);
+    if (ghost) ghost.style.display = '';
+    const btn = el && el.closest('[data-uid]');
+    return btn ? btn.dataset.uid : null;
+  }
+
+  function commitDrag(x, y) {
+    const tgtId = getTargetUid(x, y);
+    if (ghost) { ghost.remove(); ghost = null; }
+    wrap.querySelectorAll('.drag-dragging,.drag-over').forEach(el => el.classList.remove('drag-dragging', 'drag-over'));
+    document.body.style.cursor = '';
+    if (tgtId && tgtId !== dragSrcId) {
+      const cache = getGroupCache();
+      const users = cache.users;
+      const si = users.findIndex(u => u.id === dragSrcId);
+      const ti = users.findIndex(u => u.id === tgtId);
+      if (si >= 0 && ti >= 0) { const [m] = users.splice(si, 1); users.splice(ti, 0, m); setGroupCache(cache); saveData(); }
+      renderUserTabsWrap();
+      showSnack('順番を変更しました');
+    }
+    isDragging = false; dragSrcId = null;
+  }
+
+  function startDragVisual(btn, x, y) {
+    isDragging = true;
+    const rect = btn.getBoundingClientRect();
+    dragOffX = x - rect.left; dragOffY = y - rect.top;
+    btn.classList.add('drag-dragging');
+    ghost = document.createElement('div');
+    ghost.className = 'user-tab-ghost';
+    ghost.textContent = btn.textContent;
+    document.body.appendChild(ghost);
+    moveGhost(x, y);
+  }
+
+  visibleUsers.forEach(u => {
+    const btn = document.createElement('button');
+    const isMe = u.id === pinnedId;
+    btn.className = 'user-tab-btn' + (u.id === curUid ? ' active' : '');
+    btn.dataset.uid = u.id;
+    btn.textContent = u.name + (isMe ? ' 👤' : '');
+
+    btn.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      dragSrcId = u.id; isDragging = false;
+      longPressTimer = setTimeout(() => {
+        startDragVisual(btn, startX, startY);
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 400);
+    }, { passive: true });
+
+    btn.addEventListener('touchmove', e => {
+      const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
+      if (!isDragging) {
+        if (Math.abs(cx - startX) > 6 || Math.abs(cy - startY) > 6) { clearTimeout(longPressTimer); longPressTimer = null; dragSrcId = null; }
+        return;
+      }
+      e.preventDefault();
+      moveGhost(cx, cy);
+      wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      const tgtId = getTargetUid(cx, cy);
+      if (tgtId && tgtId !== dragSrcId) { const t = wrap.querySelector(`[data-uid="${tgtId}"]`); if (t) t.classList.add('drag-over'); }
+    }, { passive: false });
+
+    btn.addEventListener('touchend', e => {
+      clearTimeout(longPressTimer); longPressTimer = null;
+      if (!isDragging) {
+        switchUser(u.id); return;
+      }
+      const t = e.changedTouches[0];
+      commitDrag(t.clientX, t.clientY);
+    }, { passive: true });
+
+    btn.addEventListener('touchcancel', () => {
+      clearTimeout(longPressTimer); longPressTimer = null;
+      if (ghost) { ghost.remove(); ghost = null; }
+      wrap.querySelectorAll('.drag-dragging,.drag-over').forEach(el => el.classList.remove('drag-dragging', 'drag-over'));
+      isDragging = false; dragSrcId = null;
+    }, { passive: true });
+
+    btn.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      startX = e.clientX; startY = e.clientY; dragSrcId = u.id; isDragging = false;
+      longPressTimer = setTimeout(() => { startDragVisual(btn, e.clientX, e.clientY); document.body.style.cursor = 'grabbing'; }, 300);
+    });
+
+    btn.addEventListener('click', e => {
+      if (isDragging) { e.preventDefault(); return; }
+      clearTimeout(longPressTimer); longPressTimer = null;
+      switchUser(u.id);
+    });
+
+    // 長押しで名前変更
+    btn.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      renameUser(u.id);
+    });
+
+    wrap.appendChild(btn);
+  });
+
+  // マウスのムーブ・アップ
+  const onMove = e => {
+    if (!isDragging) return;
+    moveGhost(e.clientX, e.clientY);
+    wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    const tgtId = getTargetUid(e.clientX, e.clientY);
+    if (tgtId && tgtId !== dragSrcId) { const t = wrap.querySelector(`[data-uid="${tgtId}"]`); if (t) t.classList.add('drag-over'); }
+  };
+  const onUp = e => {
+    clearTimeout(longPressTimer); longPressTimer = null;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    if (!isDragging) { isDragging = false; dragSrcId = null; document.body.style.cursor = ''; return; }
+    commitDrag(e.clientX, e.clientY);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+
+  // ＋ユーザー追加ボタン（親モードのみ）
+  if (parent) {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-user-tab-btn';
+    addBtn.title = 'ユーザーを追加';
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', () => showAddUserOverlay());
+    wrap.appendChild(addBtn);
+  }
+
+  requestAnimationFrame(() => { wrap.scrollLeft = prevScroll; });
+}
+
+function showAddUserOverlay() {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));width:100%;max-width:480px;animation:slideUp .22s cubic-bezier(.22,1,.36,1);">
+    <div style="font-size:15px;font-weight:700;margin-bottom:16px;">ユーザーを追加</div>
+    <div style="display:flex;gap:8px;">
+      <input id="add-user-overlay-input" type="text" placeholder="名前を入力…" maxlength="20" style="flex:1;height:44px;border:1.5px solid var(--accent);border-radius:12px;padding:0 14px;font-family:var(--font);font-size:14px;color:var(--text);background:var(--surface2);outline:none;">
+      <button id="add-user-overlay-ok" style="height:44px;padding:0 18px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">追加</button>
+    </div>
+    <button id="add-user-overlay-cancel" style="width:100%;margin-top:10px;height:40px;border-radius:12px;border:none;background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:14px;cursor:pointer;">キャンセル</button>
+  </div>`;
+  document.body.appendChild(ov);
+  const inp = ov.querySelector('#add-user-overlay-input');
+  setTimeout(() => inp.focus(), 50);
+  const doAdd = () => {
+    const name = inp.value.trim();
+    if (!name) return;
+    addUserFromOverlay(name);
+    ov.remove();
+  };
+  ov.querySelector('#add-user-overlay-ok').addEventListener('click', doAdd);
+  ov.querySelector('#add-user-overlay-cancel').addEventListener('click', () => ov.remove());
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); if (e.key === 'Escape') ov.remove(); });
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+}
+
+function addUserFromOverlay(name) {
+  const d = getGroupCache();
+  if (d.users.find(u => u.name === name)) { showSnack('同じ名前のユーザーが存在します'); return; }
+  const id = 'u' + Date.now();
+  d.users.push({ id, name });
+  setGroupCache(d);
+  renderUserTabsWrap();
+  if (getGasUrl()) pushToRemote().catch(() => {});
+  showSnack(`「${name}」を追加しました`);
+}
+
+function renameUser(uid) {
+  const d = getGroupCache();
+  const user = d.users.find(u => u.id === uid);
+  if (!user) return;
+  const name = prompt('新しいユーザー名を入力してください', user.name);
+  if (!name || name.trim() === user.name) return;
+  user.name = name.trim();
+  setGroupCache(d);
+  renderUserTabsWrap();
+  renderUserList();
+  if (getGasUrl()) pushToRemote().catch(() => {});
+  showSnack('名前を変更しました');
+}
+
+function renameGroup(gid) {
+  const groups = loadGroups();
+  const g = groups.find(g => g.id === gid);
+  if (!g) return;
+  const name = prompt('新しいグループ名を入力してください', g.name);
+  if (!name || name.trim() === g.name) return;
+  g.name = name.trim();
+  saveGroups(groups);
+  renderGroupName();
+  renderGroupList();
+  showSnack('グループ名を変更しました');
 }
 
 function clampNum(input, min, max) {
@@ -1005,7 +1351,7 @@ function spinTime(field, delta) {
   let v = parseInt(el.value);
   if (isNaN(v)) v = field === 'h' ? 7 : 0;
   v = ((v + delta) + max + 1) % (max + 1);
-  el.value = v;
+  el.value = pad(v);
 }
 
 // ───────────────────────────────────────────
@@ -1049,23 +1395,64 @@ function renderAlarms() {
     const tags = [];
     if (a.skipHolidays) tags.push(`<span class="atag holiday">祝日OFF</span>`);
     if (a.sound === 'music' && musicStore[a.id]) tags.push(`<span class="atag music">🎵 ${esc(musicStore[a.id].name)}</span>`);
-    return `<div class="alarm-card${a.enabled ? '' : ' disabled'}" id="acard-${a.id}">
-      <div class="alarm-card-left">
-        <div class="alarm-time-big">${esc(a.time)}</div>
-        <div class="alarm-subtitle">${esc(a.label || '（ラベルなし）')} — ${days}</div>
-        <div class="alarm-tags">${tags.join('')}</div>
+    return `<div class="alarm-swipe-wrap" id="aswipe-${a.id}">
+      <div class="alarm-swipe-del" id="adel-${a.id}">削除</div>
+      <div class="alarm-card${a.enabled ? '' : ' disabled'}" id="acard-${a.id}">
+        <div class="alarm-card-left">
+          <div class="alarm-time-big">${esc(a.time)}</div>
+          <div class="alarm-subtitle">${esc(a.label || '（ラベルなし）')} — ${days}</div>
+          <div class="alarm-tags">${tags.join('')}</div>
+        </div>
+        <div class="alarm-card-right">
+          <label class="sw">
+            <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAlarm('${a.id}')">
+            <div class="sw-track"></div>
+            <div class="sw-thumb"></div>
+          </label>
+          <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
+        </div>
       </div>
-      <div class="alarm-card-right">
-        <label class="sw">
-          <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAlarm('${a.id}')">
-          <div class="sw-track"></div>
-          <div class="sw-thumb"></div>
-        </label>
-        <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
-        <button class="icon-btn del" onclick="deleteAlarm('${a.id}')">✕</button>
-      </div>
+      <button class="alarm-hover-del" onclick="deleteAlarm('${a.id}',true)" title="削除">✕</button>
     </div>`;
   }).join('');
+  // スワイプ削除のイベント
+  alarms.forEach(a => initSwipeDelete(a.id));
+}
+
+function initSwipeDelete(id) {
+  const card = document.getElementById('acard-' + id);
+  const delEl = document.getElementById('adel-' + id);
+  if (!card || !delEl) return;
+  let startX = 0, curX = 0, swiping = false;
+  const THRESHOLD = 80;
+
+  card.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    curX = 0;
+    swiping = true;
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    if (!swiping) return;
+    const dx = e.touches[0].clientX - startX;
+    if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    curX = Math.max(dx, -THRESHOLD - 20);
+    card.style.transform = `translateX(${curX}px)`;
+    delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => {
+    swiping = false;
+    if (-curX >= THRESHOLD) {
+      // 削除実行
+      card.style.transform = `translateX(-100%)`;
+      card.style.transition = 'transform .25s ease';
+      setTimeout(() => deleteAlarm(id, true), 250);
+    } else {
+      card.style.transform = '';
+      delEl.classList.remove('visible');
+    }
+  });
 }
 
 // ───────────────────────────────────────────
@@ -1083,8 +1470,8 @@ function openModal(id = null) {
     const a = alarms.find(x => x.id === id);
     if (a) {
       const [h, m] = a.time.split(':').map(Number);
-      document.getElementById('t-h').value = h;
-      document.getElementById('t-m').value = m;
+      document.getElementById('t-h').value = pad(h);
+      document.getElementById('t-m').value = pad(m);
       clockH = h; clockM = m;
       document.getElementById('alarm-label').value = a.label || '';
       (a.days || []).forEach(d => { const b = document.querySelector(`.wd-btn[data-d="${d}"]`); if (b) b.classList.add('sel'); });
@@ -1097,8 +1484,8 @@ function openModal(id = null) {
       }
     }
   } else {
-    document.getElementById('t-h').value = 7;
-    document.getElementById('t-m').value = 0;
+    document.getElementById('t-h').value = '07';
+    document.getElementById('t-m').value = '00';
     clockH = 7; clockM = 0;
     document.getElementById('alarm-label').value = '';
     document.getElementById('skip-hol').checked = true;
@@ -1146,8 +1533,8 @@ function saveAlarm() {
   showSnack(idx >= 0 ? '更新しました' : '追加しました');
 }
 
-function deleteAlarm(id) {
-  if (!confirm('このアラームを削除しますか？')) return;
+function deleteAlarm(id, noConfirm = false) {
+  if (!noConfirm && !confirm('このアラームを削除しますか？')) return;
   alarms = alarms.filter(a => a.id !== id);
   delete overrides[id]; delete musicStore[id];
   if (selAlarmId === id) selAlarmId = null;
@@ -1247,8 +1634,8 @@ function updateClockHand() {
 
 function updateClockDisplay() {
   document.getElementById('clock-disp').textContent = pad(clockH) + ':' + pad(clockM);
-  document.getElementById('t-h').value = clockH;
-  document.getElementById('t-m').value = clockM;
+  document.getElementById('t-h').value = pad(clockH);
+  document.getElementById('t-m').value = pad(clockM);
 }
 
 function cDragStart(e) {
@@ -1593,7 +1980,16 @@ function importData(e) {
 // ───────────────────────────────────────────
 function openGroupSheet() {
   renderGroupSheet();
+  // 親モードチェックボックスを同期
+  const chk = document.getElementById('parent-mode-chk');
+  if (chk) chk.checked = isParentMode();
   document.getElementById('group-sheet').classList.add('open');
+}
+
+function toggleParentMode(on) {
+  setParentMode(on);
+  renderUserTabsWrap();
+  showSnack(on ? '親モードをオンにしました' : '親モードをオフにしました');
 }
 function closeGroupSheet() { document.getElementById('group-sheet').classList.remove('open'); }
 
@@ -1619,6 +2015,7 @@ function renderGroupList() {
         <div style="font-size:13px;font-weight:500;color:var(--text);">${esc(g.name)}${g.id === curId ? ' <span style="font-size:10px;background:var(--accent-l);color:var(--accent);border-radius:4px;padding:1px 5px;">使用中</span>' : ''}</div>
         ${g.gasUrl ? '<div style="font-size:10px;color:var(--blue);margin-top:1px;">🔗 GAS連携あり</div>' : ''}
       </div>
+      <button class="settings-btn" onclick="renameGroup('${g.id}')">名前変更</button>
       ${g.id !== curId ? `<button class="settings-btn" onclick="switchGroup('${g.id}')">切替</button>` : ''}
       ${groups.length > 1 ? `<button class="settings-btn" style="color:var(--red);" onclick="deleteGroup('${g.id}')">削除</button>` : ''}
     </div>`).join('');
@@ -1632,6 +2029,7 @@ function renderUserList() {
   el.innerHTML = (d.users || []).map(u => `
     <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1.5px solid ${u.id === curUid ? 'var(--accent)' : 'var(--border2)'};background:var(--surface2);">
       <div style="flex:1;font-size:13px;color:var(--text);">${esc(u.name)}${u.id === curUid ? ' <span style="font-size:10px;background:var(--accent-l);color:var(--accent);border-radius:4px;padding:1px 5px;">使用中</span>' : ''}</div>
+      <button class="settings-btn" onclick="renameUser('${u.id}')">名前変更</button>
       ${u.id !== curUid ? `<button class="settings-btn" onclick="switchUser('${u.id}')">切替</button>` : ''}
       ${(d.users || []).length > 1 ? `<button class="settings-btn" style="color:var(--red);" onclick="deleteUser('${u.id}')">削除</button>` : ''}
     </div>`).join('');
@@ -1708,6 +2106,7 @@ function switchGroup(id) {
   renderCalendar();
   renderTimerList();
   updateNextInfo();
+  renderUserTabsWrap();
   showSnack('グループを切り替えました');
 }
 
@@ -1758,6 +2157,7 @@ function switchUser(id) {
   renderCalendar();
   renderTimerList();
   updateNextInfo();
+  renderUserTabsWrap();
   showSnack('ユーザーを切り替えました');
 }
 
@@ -1851,13 +2251,43 @@ function renderTimerList() {
 }
 
 function addTimerPreset() {
-  const name = prompt('タイマー名を入力してください', '新しいタイマー');
-  if (!name) return;
   const id = 'tp' + Date.now();
-  timerPresets.push({ id, name: name.trim(), phases: [] });
+  timerPresets.push({ id, name: '', phases: [] });
   saveData();
   renderTimerList();
   openTimerDetail(id);
+  // すぐにタイトルを編集状態にする
+  setTimeout(() => renameCurrentTimer(), 100);
+}
+
+function renameCurrentTimer() {
+  if (!currentTimerPresetId) return;
+  const titleEl = document.getElementById('timer-detail-title');
+  const preset = timerPresets.find(p => p.id === currentTimerPresetId);
+  if (!preset || !titleEl) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = preset.name;
+  input.placeholder = 'タイマー名を入力';
+  input.style.cssText = 'flex:1;border:1.5px solid var(--accent);border-radius:8px;padding:4px 10px;font-family:var(--font);font-size:15px;font-weight:700;color:var(--text);background:var(--surface2);outline:none;width:100%;';
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+  const commit = () => {
+    const name = input.value.trim() || '新しいタイマー';
+    preset.name = name;
+    saveData();
+    const div = document.createElement('div');
+    div.id = 'timer-detail-title';
+    div.className = 'timer-detail-title';
+    div.textContent = name;
+    div.title = 'タップして名前を変更';
+    div.onclick = renameCurrentTimer;
+    input.replaceWith(div);
+    renderTimerList();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { input.value = preset.name || '新しいタイマー'; input.blur(); } });
 }
 
 function deleteTimerPreset(id) {
@@ -1880,7 +2310,12 @@ function openTimerDetail(id) {
   if (!preset) return;
   timerPhases = JSON.parse(JSON.stringify(preset.phases || []));
 
-  document.getElementById('timer-detail-title').textContent = preset.name;
+  const titleEl = document.getElementById('timer-detail-title');
+  if (titleEl) {
+    titleEl.textContent = preset.name || '（名前未設定）';
+    titleEl.title = 'タップして名前を変更';
+    titleEl.onclick = renameCurrentTimer;
+  }
   document.getElementById('timer-list-view').style.display = 'none';
   document.getElementById('timer-detail-view').style.display = '';
   renderPhaseList();
@@ -1910,25 +2345,37 @@ function saveCurrentPresetPhases() {
 function renderPhaseList() {
   const el = document.getElementById('phase-list');
   if (!el) return;
-  el.innerHTML = timerPhases.map((p, i) => `
-    <div class="phase-item" data-i="${i}">
-      <div class="phase-item-top">
-        <span class="phase-drag">⠿</span>
-        <div class="phase-sec-wrap">
-          <div class="phase-sec-spin-col">
-            <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},1)">▲</button>
-            <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},-1)">▼</button>
+  el.innerHTML = timerPhases.map((p, i) => {
+    const isActive = timerState !== 'idle' && i === timerPhaseIdx;
+    return `
+    <div class="phase-item${isActive ? ' active-phase' : ''}" data-i="${i}" id="phase-item-${i}">
+      <div class="phase-swipe-del" id="psdel-${i}">削除</div>
+      <div class="phase-item-inner" id="phase-inner-${i}" style="display:flex;flex-direction:column;">
+        <div class="phase-item-top">
+          <span class="phase-num">${i + 1}.</span>
+          <span class="phase-drag" title="長押しで並び替え">⠿</span>
+          <input class="phase-announce-inline" value="${esc(p.announce || '')}"
+            placeholder="アナウンス（例: 前歯を磨きます）"
+            oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();">
+          <div class="phase-interval-wrap">
+            <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
+              onfocus="if(!this._clearing){this._clearing=true;this.select();}"
+              onblur="this._clearing=false;timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();renderPhaseList();"
+              oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();">
+            <div class="phase-sec-spin-col">
+              <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},1)">▲</button>
+              <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},-1)">▼</button>
+            </div>
+            <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
           </div>
-          <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
-            oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();">
-          <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
+          ${timerState !== 'idle' ? `<button class="phase-skip-btn" onclick="timerJumpToStep(${i})">→</button>` : ''}
+          <button class="phase-del" onclick="deletePhase(${i})" title="削除">✕</button>
         </div>
-        <button class="phase-del" onclick="deletePhase(${i})">✕</button>
       </div>
-      <input class="phase-announce-input" value="${esc(p.announce || '')}"
-        placeholder="アナウンスを入力（例: 前歯を磨きます）"
-        oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();">
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  initPhaseDrag();
+  initPhaseSwipe();
 }
 
 function spinPhaseSec(i, delta) {
@@ -1993,6 +2440,7 @@ function timerStartStop() {
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   }
   timerUpdateDisplay();
+  renderPhaseList();
 }
 
 function timerTick() {
@@ -2006,7 +2454,9 @@ function timerTick() {
     timerRemain = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
+    renderPhaseList();
   } else {
+    // カウントダウン音は常に（アナウンス中も含め）次のステップまで継続
     playCountdownTick();
   }
   timerUpdateDisplay();
@@ -2064,6 +2514,154 @@ function timerReset() {
   timerTotalElapsed = 0;
   document.getElementById('timer-start-btn').textContent = '▶ スタート';
   timerUpdateDisplay();
+  renderPhaseList();
+}
+
+function timerSkipNext() {
+  if (timerState === 'idle') return;
+  timerPhaseIdx++;
+  if (timerPhaseIdx >= timerPhases.length) { timerFinish(); return; }
+  timerRemain = timerPhases[timerPhaseIdx].sec;
+  // totalElapsedを調整
+  timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0);
+  playBeep('phase');
+  announcePhase(timerPhaseIdx);
+  timerUpdateDisplay();
+  renderPhaseList();
+}
+
+function timerSkipPrev() {
+  if (timerState === 'idle') return;
+  if (timerPhaseIdx > 0) timerPhaseIdx--;
+  timerRemain = timerPhases[timerPhaseIdx].sec;
+  timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0);
+  announcePhase(timerPhaseIdx);
+  timerUpdateDisplay();
+  renderPhaseList();
+}
+
+function timerJumpToStep(idx) {
+  if (idx < 0 || idx >= timerPhases.length) return;
+  if (timerState === 'idle') {
+    // アイドル時はそのステップからスタート
+    timerPhaseIdx = idx;
+    timerTotalElapsed = timerPhases.slice(0, idx).reduce((s, p) => s + p.sec, 0);
+    timerTotalSec = timerPhases.reduce((s, p) => s + p.sec, 0);
+    timerRemain = timerPhases[idx].sec;
+    timerState = 'running';
+    announcePhase(idx);
+    timerInterval = setInterval(timerTick, 1000);
+    document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
+  } else {
+    timerPhaseIdx = idx;
+    timerRemain = timerPhases[idx].sec;
+    timerTotalElapsed = timerPhases.slice(0, idx).reduce((s, p) => s + p.sec, 0);
+    announcePhase(idx);
+  }
+  timerUpdateDisplay();
+  renderPhaseList();
+}
+
+// ── フェーズ スワイプ削除（スマホ）──
+function initPhaseSwipe() {
+  timerPhases.forEach((_, i) => {
+    const inner = document.getElementById('phase-inner-' + i);
+    const delEl = document.getElementById('psdel-' + i);
+    if (!inner || !delEl) return;
+    let startX = 0, curX = 0, swiping = false;
+    const THRESHOLD = 72;
+
+    inner.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      curX = 0; swiping = true;
+    }, { passive: true });
+
+    inner.addEventListener('touchmove', e => {
+      if (!swiping) return;
+      const dx = e.touches[0].clientX - startX;
+      if (dx > 0) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
+      curX = Math.max(dx, -THRESHOLD - 20);
+      inner.style.transform = `translateX(${curX}px)`;
+      delEl.style.opacity = (-curX >= THRESHOLD * 0.5) ? '1' : '0';
+    }, { passive: true });
+
+    inner.addEventListener('touchend', () => {
+      swiping = false;
+      if (-curX >= THRESHOLD) {
+        inner.style.transform = `translateX(-100%)`;
+        inner.style.transition = 'transform .25s ease';
+        setTimeout(() => deletePhase(i), 250);
+      } else {
+        inner.style.transform = '';
+        delEl.style.opacity = '0';
+      }
+    });
+  });
+}
+
+// ── フェーズドラッグ並び替え ──
+function initPhaseDrag() {
+  const list = document.getElementById('phase-list');
+  if (!list) return;
+  let dragSrc = null, dragGhost = null, dragOffY = 0;
+
+  list.querySelectorAll('.phase-drag').forEach(handle => {
+    const item = handle.closest('.phase-item');
+    handle.addEventListener('mousedown', startDrag);
+    handle.addEventListener('touchstart', startDrag, { passive: false });
+
+    function startDrag(e) {
+      e.preventDefault();
+      dragSrc = item;
+      const rect = item.getBoundingClientRect();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      dragOffY = clientY - rect.top;
+      dragGhost = item.cloneNode(true);
+      dragGhost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.85;pointer-events:none;z-index:999;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.2);`;
+      document.body.appendChild(dragGhost);
+      item.style.opacity = '.3';
+
+      const onMove = (ev) => {
+        const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+        dragGhost.style.top = (cy - dragOffY) + 'px';
+        // ドロップ先を探す
+        list.querySelectorAll('.phase-item').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom'));
+        const el = document.elementFromPoint(rect.left + 10, cy);
+        const target = el && el.closest('.phase-item');
+        if (target && target !== dragSrc) {
+          const tRect = target.getBoundingClientRect();
+          target.classList.add(cy < tRect.top + tRect.height / 2 ? 'drag-over-top' : 'drag-over-bottom');
+        }
+      };
+      const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+        dragGhost.remove();
+        item.style.opacity = '';
+        list.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(el => {
+          const isTop = el.classList.contains('drag-over-top');
+          el.classList.remove('drag-over-top','drag-over-bottom');
+          const si = parseInt(dragSrc.dataset.i);
+          const ti = parseInt(el.dataset.i);
+          if (si !== ti) {
+            const [moved] = timerPhases.splice(si, 1);
+            const insertIdx = isTop ? (ti > si ? ti - 1 : ti) : (ti < si ? ti + 1 : ti);
+            timerPhases.splice(Math.max(0, Math.min(insertIdx, timerPhases.length)), 0, moved);
+            saveCurrentPresetPhases();
+            renderPhaseList();
+            timerUpdateDisplay();
+          }
+        });
+        dragSrc = null;
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
+    }
+  });
 }
 
 // ── アナウンス ──
