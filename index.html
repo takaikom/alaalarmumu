@@ -493,7 +493,12 @@ select.form-input option{background:var(--surface2);color:var(--text);}
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-primary" style="flex:1;padding:10px;" onclick="saveGasUrl()">接続・同期</button>
+        <button class="settings-btn" onclick="testGasReceive()" title="GASから実際に受信できるかテストします">受信テスト</button>
         <button class="settings-btn" style="color:var(--red);" onclick="disconnectGas()">接続解除</button>
+      </div>
+      <div id="gas-test-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);font-size:11px;font-family:monospace;color:var(--text2);word-break:break-all;white-space:pre-wrap;max-height:120px;overflow-y:auto;"></div>
+      <div style="margin-top:6px;">
+        <button class="settings-btn" style="font-size:11px;color:var(--text3);" onclick="showGasScriptTemplate()">📋 GASスクリプト雛形を表示</button>
       </div>
     </div>
   </div>
@@ -842,10 +847,12 @@ function setCurrentUserId(id) {
   setGroupCache(d);
 }
 
-function getPinnedUserId() { return localStorage.getItem('sa_pinned_user') || ''; }
-function setPinnedUserId(id) { localStorage.setItem('sa_pinned_user', id); }
-function isParentMode() { return localStorage.getItem('sa_parent_mode') === '1'; }
-function setParentMode(v) { localStorage.setItem('sa_parent_mode', v ? '1' : '0'); }
+const SA_PINNED_KEY = 'sa_pinned_user_';
+const SA_PARENT_KEY = 'sa_parent_mode_';
+function getPinnedUserId() { return localStorage.getItem(SA_PINNED_KEY + getCurrentGroupId()) || ''; }
+function setPinnedUserId(id) { localStorage.setItem(SA_PINNED_KEY + getCurrentGroupId(), id); }
+function isParentMode() { return localStorage.getItem(SA_PARENT_KEY + getCurrentGroupId()) === '1'; }
+function setParentMode(v) { localStorage.setItem(SA_PARENT_KEY + getCurrentGroupId(), v ? '1' : '0'); }
 
 // ───────────────────────────────────────────
 // MAIN STATE (per-user)
@@ -889,10 +896,38 @@ async function remoteLoad(url) {
   const u = url || getGasUrl();
   if (!u) return null;
   try {
-    const res = await fetch(u, { cache: 'no-store' });
-    const data = await res.json();
-    return (data && data.users) ? data : null;
-  } catch { return null; }
+    // GASはリダイレクトを返すことがあるため redirect:'follow' を明示
+    const res = await fetch(u, {
+      method: 'GET',
+      cache: 'no-store',
+      redirect: 'follow',
+      mode: 'cors'
+    });
+    if (!res.ok) {
+      console.warn('[remoteLoad] HTTP error:', res.status, res.statusText);
+      return null;
+    }
+    const text = await res.text();
+    if (!text || text.trim() === '') {
+      console.warn('[remoteLoad] Empty response from GAS');
+      return null;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.warn('[remoteLoad] JSON parse failed. Raw response (first 300 chars):', text.slice(0, 300));
+      return null;
+    }
+    if (!data || !data.users) {
+      console.warn('[remoteLoad] Unexpected data shape:', JSON.stringify(data).slice(0, 200));
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.warn('[remoteLoad] Fetch error:', e.message || e);
+    return null;
+  }
 }
 
 async function remoteSave(data) {
@@ -900,113 +935,127 @@ async function remoteSave(data) {
   if (!url) return false;
   setSyncDot('syncing');
   try {
+    // GASはPOSTのContent-Typeがtext/plainでないとdoPost内でgetPostData()が失敗する場合がある
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      console.warn('[remoteSave] HTTP error:', res.status);
+      setSyncDot('err');
+      return false;
+    }
+    const text = await res.text();
+    console.log('[remoteSave] Response:', text.slice(0, 200));
     setSyncDot('ok');
     return true;
-  } catch (e) { setSyncDot('err'); return false; }
+  } catch (e) {
+    console.warn('[remoteSave] Fetch error:', e.message || e);
+    setSyncDot('err');
+    return false;
+  }
 }
 
 // ── 送信: ローカルの全データをGASに完全上書き ──
 async function pushToRemote() {
-  const url = getGasUrl();
-  if (!url) return;
-  setSyncDot('syncing');
-  // 送信前に現在のユーザーデータをキャッシュに書き込む
-  saveUserDataToCache();
-  const d = getGroupCache();
+  if (!getGasUrl()) return false;
+  // 現在ユーザーのデータを書き込んでから全体を送信
+  const d = saveUserDataToCache();
+  setGroupCache(d);
   const g = getCurrentGroup();
-  const payload = {
-    groupName: g ? g.name : '',
-    users: d.users || [],
-    deletedUsers: d.deletedUsers || [],
-    updatedAt: Date.now()
-  };
+  const payload = g ? { ...d, groupName: g.name } : d;
   const ok = await remoteSave(payload);
   updateGasSyncInfo(ok);
   return ok;
 }
 
-// ── 受信: GASデータとローカルをユーザー単位でマージ ──
-// 方針: 各ユーザーは updatedAt が新しい方を採用、両方にしか居ないユーザーは追加
+// ── 受信: tsuzukeru方式 ──
+// リモートを権威とし、現在ユーザーのデータはリモートで上書き、他ユーザーもリモートデータを使用
 async function syncFromRemote(silent = false) {
-  const url = getGasUrl();
-  if (!url) { setSyncDot('off'); if (!silent) showSnack('GAS URLが設定されていません'); return; }
-  setSyncDot('syncing');
-  const remote = await remoteLoad(url);
-  if (!remote) {
-    setSyncDot('err');
-    if (!silent) showSnack('受信に失敗しました。GAS URLを確認してください。');
-    return;
-  }
+  if (!getGasUrl()) { setSyncDot('off'); if (!silent) showSnack('GAS URLが設定されていません'); return; }
+  if (!silent) setSyncDot('syncing');
+  try {
+    const remote = await remoteLoad();
+    if (!remote) { if (!silent) setSyncDot('err'); if (!silent) showSnack('❌ 受信失敗。受信テストで確認してください。'); updateGasSyncInfo(false); return; }
 
-  // 送信前に現在のユーザーデータをキャッシュに書き込む
-  saveUserDataToCache();
-  const local = getGroupCache();
-  const curUid = local.currentUserId;
+    const local = getGroupCache();
+    const curUid = local.currentUserId;
+    const merged = { ...local };
 
-  // deletedUsers をマージ（双方の削除記録を統合）
-  const mergedDeleted = [...(local.deletedUsers || [])];
-  (remote.deletedUsers || []).forEach(ru => {
-    if (!mergedDeleted.find(u => u.id === ru.id)) mergedDeleted.push(ru);
-  });
+    // deletedUsers はローカルとリモートをマージ（両方を保持）
+    const remoteDeleted = remote.deletedUsers || [];
+    const localDeleted = (merged.deletedUsers || []).slice();
+    remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
+    merged.deletedUsers = localDeleted;
 
-  // ユーザーをマージ
-  const mergedUsers = [];
-  const allIds = new Set([
-    ...(local.users || []).map(u => u.id),
-    ...(remote.users || []).map(u => u.id)
-  ]);
-
-  allIds.forEach(id => {
-    // 削除済みはスキップ
-    if (mergedDeleted.find(u => u.id === id)) return;
-    const lu = (local.users || []).find(u => u.id === id);
-    const ru = (remote.users || []).find(u => u.id === id);
-    if (lu && ru) {
-      // 両方に存在: 現在のユーザーはローカル優先、それ以外はupdatedAtが新しい方
-      if (id === curUid) {
-        mergedUsers.push(lu);
+    // リモートのusers一覧を基準にする（リモートが権威）
+    const newUsers = [];
+    (remote.users || []).forEach(ru => {
+      if (merged.deletedUsers.find(u => u.id === ru.id)) return;
+      if (ru.id === curUid) {
+        // 現在表示中のユーザー：リモートデータで完全上書き
+        const lu = merged.users.find(u => u.id === ru.id) || {};
+        newUsers.push({ ...lu, ...ru });
       } else {
-        const lTime = lu.updatedAt || 0;
-        const rTime = ru.updatedAt || 0;
-        mergedUsers.push(lTime >= rTime ? lu : ru);
+        // 他ユーザー：リモートデータをそのまま使用
+        newUsers.push(ru);
       }
-    } else if (lu) {
-      mergedUsers.push(lu); // ローカルのみ
-    } else if (ru) {
-      mergedUsers.push(ru); // リモートのみ
-    }
-  });
+    });
+    // リモートに存在しないローカルユーザーを追加（削除済みは除く）
+    (merged.users || []).forEach(lu => {
+      if (!newUsers.find(u => u.id === lu.id) && !merged.deletedUsers.find(u => u.id === lu.id)) {
+        newUsers.push(lu);
+      }
+    });
+    merged.users = newUsers;
 
-  // グループ名をリモートから反映（GAS側が権威）
-  if (remote.groupName) {
-    const groups = loadGroups();
-    const gid = getCurrentGroupId();
-    const g = groups.find(g => g.id === gid);
-    if (g && g.gasUrl && remote.groupName !== g.name) {
-      g.name = remote.groupName; saveGroups(groups);
+    // グループ名をリモートから反映
+    if (remote.groupName) {
+      const groups = loadGroups(); const gid = getCurrentGroupId();
+      const g = groups.find(g => g.id === gid);
+      if (g && g.gasUrl && remote.groupName !== g.name) { g.name = remote.groupName; saveGroups(groups); }
     }
+
+    setGroupCache(merged);
+
+    // currentUserId が無効になっていた場合はpinnedへフォールバック
+    const pinned = getPinnedUserId();
+    const currentIsValid = !!merged.users.find(u => u.id === merged.currentUserId);
+    if (!currentIsValid) {
+      if (pinned && merged.users.find(u => u.id === pinned)) {
+        merged.currentUserId = pinned;
+      } else if (merged.users.length) {
+        merged.currentUserId = merged.users[0].id;
+      }
+      setGroupCache(merged);
+    }
+
+    // 現在ユーザーデータを再ロードして全UI更新
+    loadUserData();
+    fullRefreshUI();
+    if (!silent) setSyncDot('ok');
+    if (!silent) showSnack('✅ 受信しました（' + newUsers.length + '人）');
+    updateGasSyncInfo(true);
+
+  } catch(err) {
+    console.error('[syncFromRemote] エラー:', err);
+    setSyncDot('err');
+    if (!silent) showSnack('❌ 同期エラー: ' + (err.message || err));
+    updateGasSyncInfo(false);
   }
+}
 
-  const merged = {
-    ...local,
-    users: mergedUsers,
-    deletedUsers: mergedDeleted
-  };
-  setGroupCache(merged);
-
-  // 現在のユーザーデータを再読み込み
-  loadUserData();
+// 受信後に全画面を再描画する
+function fullRefreshUI() {
   renderGroupName();
-  renderGroupSheet();
-  setSyncDot('ok');
-  if (!silent) showSnack('受信して統合しました');
-  updateGasSyncInfo(true);
+  renderUserTabsWrap();
+  renderAlarms();
+  renderCalendar();
+  renderCalAlarmList();
+  renderTimerList();
+  try { renderGroupSheet(); } catch(e) {}
 }
 
 function updateGasSyncInfo(ok = true) {
@@ -1024,6 +1073,7 @@ function updateGasSyncInfo(ok = true) {
 // ───────────────────────────────────────────
 
 // キャッシュのみ更新（GAS送信なし）
+// 現在ユーザーの状態をキャッシュに書き込む（内部用）
 function saveUserDataToCache() {
   const d = getGroupCache();
   const uid = getCurrentUserId();
@@ -1035,16 +1085,21 @@ function saveUserDataToCache() {
   user.snoozeMin = snoozeMin;
   user.timerPresets = timerPresets;
   user.updatedAt = Date.now();
-  setGroupCache(d);
+  return d;
 }
 
-function saveUserData() {
-  saveUserDataToCache();
+// ローカル保存 + GAS自動送信（tsuzukeru方式）
+async function saveData() {
+  const d = saveUserDataToCache();
+  setGroupCache(d); // ローカルに即時保存
+  if (getGasUrl()) {
+    const g = getCurrentGroup();
+    const payload = g ? { ...d, groupName: g.name } : d;
+    remoteSave(payload).then(ok => { if (!ok) setSyncDot('err'); }).catch(() => setSyncDot('err'));
+  }
 }
 
-function saveData() {
-  saveUserData();
-}
+function saveUserData() { saveData(); }
 
 function loadUserData() {
   const d = getGroupCache();
@@ -1127,6 +1182,82 @@ function updateHeaderSyncBtns() {
   if (dn) dn.style.display = hasUrl ? '' : 'none';
 }
 
+async function testGasReceive() {
+  const url = getGasUrl();
+  const resultEl = document.getElementById('gas-test-result');
+  if (!resultEl) return;
+  if (!url) { resultEl.textContent = '⚠️ GAS URLが設定されていません'; resultEl.style.display = ''; return; }
+  resultEl.textContent = '🔄 受信テスト中…'; resultEl.style.display = '';
+  try {
+    const res = await fetch(url, { method: 'GET', cache: 'no-store', redirect: 'follow', mode: 'cors' });
+    const text = await res.text();
+    resultEl.textContent = `HTTP ${res.status}\n` + text.slice(0, 500) + (text.length > 500 ? '\n…(省略)' : '');
+    if (res.ok) {
+      try {
+        const d = JSON.parse(text);
+        if (d && d.users) {
+          resultEl.textContent = `✅ 正常受信\nHTTP ${res.status}\nusers: ${d.users.length}人\n` + JSON.stringify(d).slice(0, 300);
+        } else {
+          resultEl.textContent = `⚠️ 受信できたがusersフィールドなし\n` + text.slice(0, 400);
+        }
+      } catch {
+        resultEl.textContent = `⚠️ JSONパース失敗 (HTTP ${res.status})\n` + text.slice(0, 400);
+      }
+    } else {
+      resultEl.textContent = `❌ HTTP ${res.status} ${res.statusText}\n` + text.slice(0, 300);
+    }
+  } catch (e) {
+    resultEl.textContent = `❌ 通信エラー: ${e.message}\n\nGASスクリプトに以下を確認してください:\n- doGet関数が実装されているか\n- デプロイが「全員」アクセス可になっているか`;
+  }
+}
+
+// GASスクリプト雛形を表示
+function showGasScriptTemplate() {
+  const tmpl = `// ====== GAS スクリプト (SmartAlarm用) ======
+const SHEET_NAME = 'SmartAlarm';
+
+function doGet(e) {
+  const data = readData();
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    writeData(data);
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function readData() {
+  const sheet = getSheet();
+  const val = sheet.getRange('A1').getValue();
+  if (!val) return { users: [], deletedUsers: [] };
+  try { return JSON.parse(val); } catch { return { users: [], deletedUsers: [] }; }
+}
+
+function writeData(data) {
+  const sheet = getSheet();
+  sheet.getRange('A1').setValue(JSON.stringify(data));
+}
+
+function getSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  return sheet;
+}`;
+  alert('GASスクリプト:\n\n' + tmpl + '\n\n上記をGASエディタに貼り付け、「ウェブアプリとしてデプロイ」→「アクセス: 全員」で公開してください。');
+}
+
 async function headerPushToRemote() {
   const url = getGasUrl();
   if (!url) { showSnack('GAS URLが設定されていません'); return; }
@@ -1142,7 +1273,6 @@ async function headerSyncFromRemote() {
   const btn = document.getElementById('hdr-download-btn');
   if (btn) btn.disabled = true;
   await syncFromRemote(false);
-  renderUserTabsWrap();
   if (btn) btn.disabled = false;
 }
 
@@ -1289,10 +1419,17 @@ function renderUserTabsWrap() {
       switchUser(u.id);
     });
 
-    // 長押しで名前変更
+    // 右クリック／長押し：名前変更 or 自分として設定
     btn.addEventListener('contextmenu', e => {
       e.preventDefault();
-      renameUser(u.id);
+      if (isParentMode() && u.id !== getPinnedUserId()) {
+        // 親モードONで他人のタブ：「自分として設定」か「名前変更」を選ぶ
+        const choice = confirm(`「${u.name}」を自分のユーザーとして設定しますか？\n（キャンセルで名前変更）`);
+        if (choice) setSelfUser(u.id);
+        else renameUser(u.id);
+      } else {
+        renameUser(u.id);
+      }
     });
 
     wrap.appendChild(btn);
@@ -2200,19 +2337,29 @@ function deleteUser(id) {
   showSnack('ユーザーを削除しました');
 }
 
+// ユーザータブをタップ（tsuzukeru方式）:
+//   親モードON  → currentUserId を切り替えるだけ（pinnedId＝自分は変わらない）
+//   親モードOFF → currentUserId と pinnedId 両方を切り替え（自分として設定）
 function switchUser(id) {
-  saveUserData();
-  setCurrentUserId(id);
+  const d = getGroupCache();
+  d.currentUserId = id;
+  if (!isParentMode()) setPinnedUserId(id);
+  setGroupCache(d);
   loadUserData();
-  renderGroupSheet();
-  renderGroupName();
-  renderAlarms();
-  renderCalAlarmList();
-  renderCalendar();
-  renderTimerList();
+  fullRefreshUI();
   updateNextInfo();
-  renderUserTabsWrap();
-  showSnack('ユーザーを切り替えました');
+}
+
+// 親モードONのときに「このユーザーを自分にする」（タブ右クリック長押しから）
+function setSelfUser(id) {
+  const d = getGroupCache();
+  d.currentUserId = id;
+  setPinnedUserId(id);
+  setGroupCache(d);
+  loadUserData();
+  fullRefreshUI();
+  updateNextInfo();
+  showSnack('自分のユーザーを変更しました');
 }
 
 function executeCopyUser() {
