@@ -56,9 +56,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .alarm-swipe-del.visible{opacity:1;}
 .alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s,transform .1s;position:relative;touch-action:pan-y;user-select:none;}
 .alarm-swipe-wrap:hover .alarm-hover-del{opacity:1;pointer-events:auto;}
-.alarm-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;}
+.alarm-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;flex-shrink:0;}
 .alarm-hover-del:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
-@media (hover: none){.alarm-hover-del{display:none;}}
+@media (hover: none){.alarm-hover-del{display:none !important;}}
+
+/* TRASH / UNDO */
+.trash-section{margin-bottom:4px;}
+.trash-section-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin:12px 0 6px;display:flex;align-items:center;gap:8px;}
+.trash-section-label button{padding:2px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--red);font-size:10px;font-family:var(--font);cursor:pointer;}
+.trash-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:6px;gap:8px;opacity:.85;}
+.trash-bar-info{flex:1;min-width:0;}
+.trash-bar-time{font-family:var(--mono);font-size:18px;color:var(--text2);}
+.trash-bar-label{font-size:11px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.trash-bar-actions{display:flex;gap:6px;flex-shrink:0;}
+.trash-restore-btn{padding:5px 12px;border-radius:7px;border:1px solid rgba(90,138,42,.5);background:var(--green-l);color:var(--green);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;}
+.trash-restore-btn:active{background:var(--green);}
+.trash-purge-btn{padding:5px 10px;border-radius:7px;border:1px solid rgba(192,48,48,.4);background:var(--red-l);color:var(--red);font-family:var(--font);font-size:12px;cursor:pointer;}
+.trash-purge-btn:active{background:var(--red);}
+/* フェーズアンドゥバーと共通 */
 .alarm-card.disabled{opacity:.42;}
 .alarm-card.firing{border-color:var(--accent);animation:cpulse 1s ease-in-out infinite alternate;}
 @keyframes cpulse{from{background:var(--surface);}to{background:rgba(216,90,48,.1);}}
@@ -551,7 +566,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.1</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.2</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
     <div class="settings-row">
       <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
       <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
@@ -1567,37 +1582,68 @@ function switchTab(name) {
 // ───────────────────────────────────────────
 function renderAlarms() {
   const el = document.getElementById('alarm-list');
-  if (!alarms.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏰</div>アラームがありません<br>右下の ＋ から追加してください</div>`;
-    return;
-  }
   const DN = ['日', '月', '火', '水', '木', '金', '土'];
-  el.innerHTML = alarms.map(a => {
-    const days = a.days?.length ? a.days.map(d => DN[d]).join('・') : '1回のみ';
-    const tags = [];
-    if (a.skipHolidays) tags.push(`<span class="atag holiday">祝日OFF</span>`);
-    if (a.sound === 'music' && musicStore[a.id]) tags.push(`<span class="atag music">🎵 ${esc(musicStore[a.id].name)}</span>`);
-    return `<div class="alarm-swipe-wrap" id="aswipe-${a.id}">
-      <div class="alarm-swipe-del" id="adel-${a.id}">削除</div>
-      <div class="alarm-card${a.enabled ? '' : ' disabled'}" id="acard-${a.id}">
-        <div class="alarm-card-left">
-          <div class="alarm-time-big">${esc(a.time)}</div>
-          <div class="alarm-subtitle">${esc(a.label || '（ラベルなし）')} — ${days}</div>
-          <div class="alarm-tags">${tags.join('')}</div>
-        </div>
-        <div class="alarm-card-right">
-          <label class="sw">
-            <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAlarm('${a.id}')">
-            <div class="sw-track"></div>
-            <div class="sw-thumb"></div>
-          </label>
-          <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
-          <button class="icon-btn del alarm-hover-del" onclick="deleteAlarm('${a.id}',true)" title="削除">✕</button>
-        </div>
-    </div>`;
-  }).join('');
-  // スワイプ削除のイベント
-  alarms.forEach(a => initSwipeDelete(a.id));
+
+  // アクティブなアラーム
+  const activeAlarms = alarms.filter(a => !a._trashed);
+  // ゴミ箱
+  const trashedAlarms = alarms.filter(a => a._trashed);
+
+  let html = '';
+
+  if (!activeAlarms.length && !trashedAlarms.length) {
+    html = `<div class="empty-state"><div class="empty-icon">⏰</div>アラームがありません<br>右下の ＋ から追加してください</div>`;
+  } else {
+    html += activeAlarms.map(a => {
+      const days = a.days?.length ? a.days.map(d => DN[d]).join('・') : '1回のみ';
+      const tags = [];
+      if (a.skipHolidays) tags.push(`<span class="atag holiday">祝日OFF</span>`);
+      if (a.sound === 'music' && musicStore[a.id]) tags.push(`<span class="atag music">🎵 ${esc(musicStore[a.id].name)}</span>`);
+      return `<div class="alarm-swipe-wrap" id="aswipe-${a.id}">
+        <div class="alarm-swipe-del" id="adel-${a.id}">削除</div>
+        <div class="alarm-card${a.enabled ? '' : ' disabled'}" id="acard-${a.id}">
+          <div class="alarm-card-left">
+            <div class="alarm-time-big">${esc(a.time)}</div>
+            <div class="alarm-subtitle">${esc(a.label || '（ラベルなし）')} — ${days}</div>
+            <div class="alarm-tags">${tags.join('')}</div>
+          </div>
+          <div class="alarm-card-right">
+            <label class="sw">
+              <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAlarm('${a.id}')">
+              <div class="sw-track"></div>
+              <div class="sw-thumb"></div>
+            </label>
+            <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
+            <button class="alarm-hover-del" onclick="trashAlarm('${a.id}')" title="削除（ゴミ箱へ）">✕</button>
+          </div>
+      </div>`;
+    }).join('');
+
+    // ゴミ箱セクション
+    if (trashedAlarms.length) {
+      html += `<div class="trash-section">
+        <div class="trash-section-label">🗑 ゴミ箱（${trashedAlarms.length}件）
+          <button onclick="purgeAllAlarms()" title="すべて完全削除">すべて削除</button>
+        </div>`;
+      html += trashedAlarms.map(a => {
+        const days = a.days?.length ? a.days.map(d => DN[d]).join('・') : '1回のみ';
+        return `<div class="trash-bar">
+          <div class="trash-bar-info">
+            <div class="trash-bar-time">${esc(a.time)}</div>
+            <div class="trash-bar-label">${esc(a.label || '（ラベルなし）')} — ${days}</div>
+          </div>
+          <div class="trash-bar-actions">
+            <button class="trash-restore-btn" onclick="restoreAlarm('${a.id}')">復元</button>
+            <button class="trash-purge-btn" onclick="purgeAlarm('${a.id}')">完全削除</button>
+          </div>
+        </div>`;
+      }).join('');
+      html += `</div>`;
+    }
+  }
+
+  el.innerHTML = html;
+  activeAlarms.forEach(a => initSwipeDelete(a.id));
 }
 
 function initSwipeDelete(id) {
@@ -1625,15 +1671,50 @@ function initSwipeDelete(id) {
   card.addEventListener('touchend', () => {
     swiping = false;
     if (-curX >= THRESHOLD) {
-      // 削除実行
       card.style.transform = `translateX(-100%)`;
       card.style.transition = 'transform .25s ease';
-      setTimeout(() => deleteAlarm(id, true), 250);
+      setTimeout(() => trashAlarm(id), 250);
     } else {
       card.style.transform = '';
       delEl.classList.remove('visible');
     }
   });
+}
+
+// ─── ゴミ箱（一時削除） ───
+function trashAlarm(id) {
+  const a = alarms.find(x => x.id === id);
+  if (!a) return;
+  a._trashed = true;
+  if (selAlarmId === id) selAlarmId = null;
+  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
+  showSnack('ゴミ箱に移動しました（アラーム一覧から復元できます）');
+}
+
+function restoreAlarm(id) {
+  const a = alarms.find(x => x.id === id);
+  if (!a) return;
+  delete a._trashed;
+  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
+  showSnack('復元しました');
+}
+
+function purgeAlarm(id) {
+  if (!confirm('このアラームを完全に削除しますか？元に戻せません。')) return;
+  alarms = alarms.filter(a => a.id !== id);
+  delete overrides[id]; delete musicStore[id];
+  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
+  showSnack('完全に削除しました');
+}
+
+function purgeAllAlarms() {
+  const n = alarms.filter(a => a._trashed).length;
+  if (!n) return;
+  if (!confirm(`ゴミ箱内の${n}件のアラームを完全に削除しますか？元に戻せません。`)) return;
+  alarms.filter(a => a._trashed).forEach(a => { delete overrides[a.id]; delete musicStore[a.id]; });
+  alarms = alarms.filter(a => !a._trashed);
+  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
+  showSnack('ゴミ箱を空にしました');
 }
 
 // ───────────────────────────────────────────
@@ -1715,12 +1796,8 @@ function saveAlarm() {
 }
 
 function deleteAlarm(id, noConfirm = false) {
-  if (!noConfirm && !confirm('このアラームを削除しますか？')) return;
-  alarms = alarms.filter(a => a.id !== id);
-  delete overrides[id]; delete musicStore[id];
-  if (selAlarmId === id) selAlarmId = null;
-  saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
-  showSnack('削除しました');
+  // 後方互換：直接完全削除ではなくゴミ箱へ
+  trashAlarm(id);
 }
 
 function toggleAlarm(id) {
@@ -1853,11 +1930,12 @@ function cUpdateFromEvent(e) {
 // ───────────────────────────────────────────
 function renderCalAlarmList() {
   const el = document.getElementById('cal-alarm-list');
-  if (!alarms.length) {
+  const active = alarms.filter(a => !a._trashed);
+  if (!active.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0;">アラームがありません</div>';
     return;
   }
-  el.innerHTML = alarms.map(a => {
+  el.innerHTML = active.map(a => {
     const sel = a.id === selAlarmId;
     return `<div class="cal-alarm-item${sel ? ' sel' : ''}" onclick="selCalAlarm('${a.id}')">
       <div class="cal-alarm-item-l">
@@ -1953,6 +2031,7 @@ function checkAlarms() {
   const ds = fmtDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
   const dow = now.getDay(); const isHol = !!holidays[ds];
   for (const a of alarms) {
+    if (a._trashed) continue;
     const [ah, am] = a.time.split(':').map(Number);
     if (ah * 60 + am !== min) continue;
     const ov = (overrides[a.id] || {})[ds];
@@ -2502,6 +2581,7 @@ function openTimerDetail(id) {
   if (!preset) return;
   timerPhases = JSON.parse(JSON.stringify(preset.phases || []));
   selectedPhaseIdx = -1;
+  phaseUndoStack = [];
 
   const titleEl = document.getElementById('timer-detail-title');
   if (titleEl) {
@@ -2542,14 +2622,28 @@ function renderPhaseList() {
   const el = document.getElementById('phase-list');
   if (!el) return;
 
-  // アンドゥバーを先頭に表示
+  // ゴミ箱バーを先頭に表示（削除されたステップ）
   let undoHtml = '';
   if (phaseUndoStack.length > 0) {
-    const last = phaseUndoStack[phaseUndoStack.length - 1];
-    const name = last.phase.announce?.trim() || `ステップ ${last.index + 1}`;
-    undoHtml = `<div class="phase-undo-bar">
-      <span>「${esc(name)}」を削除しました</span>
-      <button class="phase-undo-btn" onclick="undoDeletePhase()">元に戻す</button>
+    undoHtml = phaseUndoStack.slice().reverse().map((item, ri) => {
+      const realIdx = phaseUndoStack.length - 1 - ri;
+      const name = item.phase.announce?.trim() || `ステップ（${item.phase.sec}秒）`;
+      return `<div class="trash-bar" style="margin-bottom:4px;">
+        <div class="trash-bar-info">
+          <div class="trash-bar-time" style="font-size:13px;">${esc(name)}</div>
+          <div class="trash-bar-label">${item.phase.sec}秒</div>
+        </div>
+        <div class="trash-bar-actions">
+          <button class="trash-restore-btn" onclick="undoDeletePhaseAt(${realIdx})">復元</button>
+          <button class="trash-purge-btn" onclick="purgeDeletedPhaseAt(${realIdx})">完全削除</button>
+        </div>
+      </div>`;
+    }).join('');
+    undoHtml = `<div style="margin-bottom:6px;">
+      <div class="trash-section-label" style="margin-top:0;">🗑 削除済みステップ
+        <button onclick="purgeAllDeletedPhases()">すべて削除</button>
+      </div>
+      ${undoHtml}
     </div>`;
   }
 
@@ -2643,32 +2737,38 @@ function addPhase() {
 
 function deletePhase(i) {
   const removed = timerPhases.splice(i, 1)[0];
-  // アンドゥスタックに追加（最大5件）
   phaseUndoStack.push({ phase: removed, index: i });
-  if (phaseUndoStack.length > 5) phaseUndoStack.shift();
-  // 選択インデックスを調整
+  if (phaseUndoStack.length > 20) phaseUndoStack.shift(); // 最大20件
   if (selectedPhaseIdx >= timerPhases.length) selectedPhaseIdx = timerPhases.length - 1;
   saveCurrentPresetPhases();
   renderPhaseList();
   timerUpdateDisplay();
-  // 5秒後にアンドゥをクリア
-  clearTimeout(deletePhase._undoTimer);
-  deletePhase._undoTimer = setTimeout(() => {
-    phaseUndoStack = [];
-    renderPhaseList();
-  }, 5000);
 }
 
-function undoDeletePhase() {
-  if (!phaseUndoStack.length) return;
-  const { phase, index } = phaseUndoStack.pop();
+function undoDeletePhaseAt(stackIdx) {
+  if (stackIdx < 0 || stackIdx >= phaseUndoStack.length) return;
+  const { phase, index } = phaseUndoStack.splice(stackIdx, 1)[0];
   timerPhases.splice(Math.min(index, timerPhases.length), 0, phase);
   saveCurrentPresetPhases();
-  clearTimeout(deletePhase._undoTimer);
-  if (!phaseUndoStack.length) phaseUndoStack = [];
   renderPhaseList();
   timerUpdateDisplay();
-  showSnack('元に戻しました');
+  showSnack('ステップを復元しました');
+}
+
+function undoDeletePhase() { undoDeletePhaseAt(phaseUndoStack.length - 1); }
+
+function purgeDeletedPhaseAt(stackIdx) {
+  if (stackIdx < 0 || stackIdx >= phaseUndoStack.length) return;
+  phaseUndoStack.splice(stackIdx, 1);
+  renderPhaseList();
+  showSnack('ステップを完全に削除しました');
+}
+
+function purgeAllDeletedPhases() {
+  if (!phaseUndoStack.length) return;
+  phaseUndoStack = [];
+  renderPhaseList();
+  showSnack('削除済みステップをすべて完全削除しました');
 }
 
 // ───────────────────────────────────────────
