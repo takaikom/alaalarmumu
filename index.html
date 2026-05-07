@@ -858,6 +858,17 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   <button class="btn-snooze" onclick="snoozeAlarm()">スヌーズ（<span id="snooze-disp">10</span>分）</button>
 </div>
 
+<!-- タイマーコピーモーダル -->
+<div id="timer-copy-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;">
+  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;max-height:80dvh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;">📋 タイマーをコピー</div>
+      <button onclick="closeTimerCopyModal()" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;">✕</button>
+    </div>
+    <div id="timer-copy-modal-body"></div>
+  </div>
+</div>
+
 <div class="snackbar" id="snackbar"></div>
 
 <script>
@@ -2668,6 +2679,7 @@ function renderTimerList() {
         <div class="timer-list-card-sub">${steps}ステップ・合計${fmtSec(totalSec)}</div>
       </div>
       <div class="timer-list-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn" style="font-size:14px;" onclick="openTimerCopyModal('${p.id}')" title="別ユーザー・グループにコピー">📋</button>
         <button class="icon-btn del" onclick="deleteTimerPreset('${p.id}')">✕</button>
       </div>
       <div class="timer-list-card-arrow">›</div>
@@ -2713,6 +2725,121 @@ function renameCurrentTimer() {
   };
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { input.value = preset.name || '新しいタイマー'; input.blur(); } });
+}
+
+// ── タイマーコピー ──
+let _timerCopySourceId = null;
+
+function openTimerCopyModal(presetId) {
+  _timerCopySourceId = presetId;
+  const preset = timerPresets.find(p => p.id === presetId);
+  if (!preset) return;
+
+  const groups = loadGroups();
+  const curGid = getCurrentGroupId();
+  const curUid = getCurrentUserId();
+
+  // グループ×ユーザーのセレクタHTMLを生成
+  let rows = '';
+  groups.forEach(g => {
+    let gData;
+    if (g.id === curGid) {
+      gData = getGroupCache();
+    } else {
+      gData = loadGroupData(g.id) || { users: [] };
+    }
+    const users = gData.users || [];
+    users.forEach(u => {
+      // 自分自身はスキップ
+      if (g.id === curGid && u.id === curUid) return;
+      const label = groups.length > 1 ? `${esc(g.name)} › ${esc(u.name)}` : esc(u.name);
+      rows += `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);margin-bottom:6px;cursor:pointer;">
+        <input type="radio" name="tcopy-dest" value="${esc(g.id)}|${esc(u.id)}" style="accent-color:var(--accent);">
+        <span style="font-size:13px;color:var(--text);">${label}</span>
+      </label>`;
+    });
+  });
+
+  if (!rows) {
+    rows = `<div style="font-size:13px;color:var(--text3);padding:12px 0;">コピー先のユーザーがありません。<br>設定でユーザーまたはグループを追加してください。</div>`;
+  }
+
+  document.getElementById('timer-copy-modal-body').innerHTML = `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">コピー元: <b style="color:var(--text);">${esc(preset.name || '（名前未設定）')}</b></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">コピー先を選択してください</div>
+    <div style="margin-bottom:14px;">${rows}</div>
+    <button class="btn-primary" style="padding:10px;width:100%;" onclick="executeTimerCopy()">コピーして追加</button>
+  `;
+
+  const modal = document.getElementById('timer-copy-modal');
+  modal.style.display = 'flex';
+}
+
+function closeTimerCopyModal() {
+  const modal = document.getElementById('timer-copy-modal');
+  modal.style.display = 'none';
+  _timerCopySourceId = null;
+}
+
+async function executeTimerCopy() {
+  const preset = timerPresets.find(p => p.id === _timerCopySourceId);
+  if (!preset) return;
+
+  const checked = document.querySelector('input[name="tcopy-dest"]:checked');
+  if (!checked) { showSnack('コピー先を選択してください'); return; }
+
+  const [destGid, destUid] = checked.value.split('|');
+
+  // コピーするプリセット（新しいIDを付与）
+  const newPreset = JSON.parse(JSON.stringify(preset));
+  newPreset.id = 'tp' + Date.now();
+
+  const curGid = getCurrentGroupId();
+
+  if (destGid === curGid) {
+    // 同グループ内の別ユーザーへ
+    const d = getGroupCache();
+    const destUser = d.users.find(u => u.id === destUid);
+    if (!destUser) { showSnack('コピー先ユーザーが見つかりません'); return; }
+    if (!destUser.timerPresets) destUser.timerPresets = [];
+    destUser.timerPresets.push(newPreset);
+    setGroupCache(d);
+    if (getGasUrl()) pushToRemote().catch(() => {});
+  } else {
+    // 別グループの別ユーザーへ
+    let destData = loadGroupData(destGid) || { currentUserId: destUid, users: [], deletedUsers: [] };
+    const destUser = destData.users.find(u => u.id === destUid);
+    if (!destUser) { showSnack('コピー先ユーザーが見つかりません'); return; }
+    if (!destUser.timerPresets) destUser.timerPresets = [];
+    destUser.timerPresets.push(newPreset);
+    saveGroupData(destData, destGid);
+    // コピー先グループにGASがあれば送信（全ユーザー保護）
+    const destGroup = loadGroups().find(g => g.id === destGid);
+    if (destGroup && destGroup.gasUrl) {
+      try {
+        const remoteData = await remoteLoad(destGroup.gasUrl);
+        const remoteUsers = (remoteData && remoteData.users) ? remoteData.users.slice() : destData.users.slice();
+        const ri = remoteUsers.findIndex(u => u.id === destUid);
+        if (ri >= 0) remoteUsers[ri] = destUser; else remoteUsers.push(destUser);
+        await fetch(destGroup.gasUrl, {
+          method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ users: remoteUsers, deletedUsers: destData.deletedUsers || [], groupName: destGroup.name, _sentAt: Date.now() })
+        });
+      } catch(e) { console.warn('タイマーコピーGAS送信失敗:', e); }
+    }
+  }
+
+  const destUserName = (() => {
+    const groups = loadGroups();
+    const g = groups.find(g => g.id === destGid);
+    const gData = destGid === curGid ? getGroupCache() : (loadGroupData(destGid) || {});
+    const u = (gData.users || []).find(u => u.id === destUid);
+    return (groups.length > 1 ? (g?.name + ' › ') : '') + (u?.name || '');
+  })();
+
+  closeTimerCopyModal();
+  showSnack(`「${preset.name || 'タイマー'}」を ${destUserName} にコピーしました`);
 }
 
 function deleteTimerPreset(id) {
