@@ -854,7 +854,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <div id="firing-overlay">
   <div class="firing-time" id="firing-time">07:00</div>
   <div class="firing-label" id="firing-label">起床の時間です</div>
-  <button class="btn-stop" onclick="stopAlarm()">STOP</button>
+  <div id="firing-music-hint" style="display:none;font-size:12px;color:var(--text2);margin-top:-8px;letter-spacing:.05em;">🎵 タップで音楽再生</div>
+  <button class="btn-stop" id="btn-stop" onclick="handleStopTap()">STOP</button>
   <button class="btn-snooze" onclick="snoozeAlarm()">スヌーズ（<span id="snooze-disp">10</span>分）</button>
 </div>
 
@@ -2137,47 +2138,86 @@ function fireAlarm(a) {
   startAlarmSound(a);
 }
 
-function startAlarmSound(a) {
-  stopAlarmSound();
-  // musicStoreを最新のlocalStorageから再取得（ユーザー切替後でも確実に参照）
+// ── 音楽ファイルを使うか判定するヘルパー ──
+function getFreshMusicData(alarmId) {
   const uid = getCurrentUserId();
-  let freshMusicStore = musicStore;
+  let store = musicStore;
   try {
     const raw = localStorage.getItem('sa_music_' + uid);
-    if (raw) freshMusicStore = JSON.parse(raw);
+    if (raw) store = JSON.parse(raw);
   } catch (e) {}
+  return store[alarmId]?.data || null;
+}
 
-  if (a.sound === 'music' && freshMusicStore[a.id]?.data) {
-    const audioData = freshMusicStore[a.id].data;
+function startAlarmSound(a) {
+  stopAlarmSound();
+  const hint = document.getElementById('firing-music-hint');
+
+  if (a.sound === 'music' && getFreshMusicData(a.id)) {
+    // ── 音楽モード ──
+    // Step1: まずビープで鳴らす（autoplay制限を回避するため）
     try {
-      firingAudio = new Audio();
-      firingAudio.loop = true;
-      firingAudio.src = audioData;
-      // ユーザー操作（STOPボタン表示のタップ）で再生が許可される前提だが、
-      // fireAlarmはアラーム鳴動時（checkAlarms内）から呼ばれるため
-      // Autoplay制限対策: load()後にplay()
-      firingAudio.load();
-      const playPromise = firingAudio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          // Autoplay blocked: フォールバックとしてbeepを鳴らす
-          console.warn('[startAlarmSound] music play blocked:', err.message);
+      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // AudioContextがsuspendedの場合はresumeを試みる
+      if (firingCtx.state === 'suspended') firingCtx.resume();
+      loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+      playTones(firingCtx, 'beep', 1);
+    } catch (e) {}
+    // Step2: STOPボタンタップ時に音楽へ切り替えるフラグを立てる
+    _pendingMusicAlarm = a;
+    if (hint) hint.style.display = '';
+  } else {
+    // ── ビープ/gentle/urgentモード ──
+    _pendingMusicAlarm = null;
+    if (hint) hint.style.display = 'none';
+    try {
+      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (firingCtx.state === 'suspended') firingCtx.resume();
+      loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
+      playTones(firingCtx, a.sound || 'beep', 1);
+    } catch (e) {}
+  }
+}
+
+// ── STOPボタンの最初のタップで音楽に切り替え、2回目でSTOP ──
+let _pendingMusicAlarm = null;
+let _musicStarted = false;
+
+function handleStopTap() {
+  const hint = document.getElementById('firing-music-hint');
+  if (_pendingMusicAlarm && !_musicStarted) {
+    // 1回目タップ：ユーザー操作コンテキストで音楽再生開始
+    _musicStarted = true;
+    const a = _pendingMusicAlarm;
+    const data = getFreshMusicData(a.id);
+    if (data) {
+      // ビープを止めて音楽を開始
+      stopAlarmSound();
+      try {
+        firingAudio = new Audio();
+        firingAudio.loop = true;
+        firingAudio.src = data;
+        firingAudio.play().catch(err => {
+          // まだブロックされた場合はビープに戻す
+          console.warn('[handleStopTap] play blocked:', err.message);
           firingAudio = null;
           firingCtx = new (window.AudioContext || window.webkitAudioContext)();
           loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
           playTones(firingCtx, 'beep', 1);
+          if (hint) hint.style.display = 'none';
         });
+      } catch (e) {
+        firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+        loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
       }
-    } catch (e) {
-      console.warn('[startAlarmSound] Audio error:', e);
-      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-      loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
-      playTones(firingCtx, 'beep', 1);
+      if (hint) hint.style.display = 'none';
+      // 次のタップでSTOP
+    } else {
+      stopAlarm();
     }
   } else {
-    firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-    loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
-    playTones(firingCtx, a.sound || 'beep', 1);
+    // 2回目以降のタップ：STOP
+    stopAlarm();
   }
 }
 
@@ -2189,6 +2229,10 @@ function stopAlarmSound() {
 
 function stopAlarm() {
   stopAlarmSound();
+  _pendingMusicAlarm = null;
+  _musicStarted = false;
+  const hint = document.getElementById('firing-music-hint');
+  if (hint) hint.style.display = 'none';
   document.getElementById('firing-overlay').classList.remove('open');
   document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('firing'));
   firingAlarm = null;
@@ -2197,8 +2241,8 @@ function stopAlarm() {
 function snoozeAlarm() {
   const a = firingAlarm; stopAlarm();
   if (!a) return;
-  const now = new Date();
-  now.setMinutes(now.getMinutes() + snoozeMin);
+  _pendingMusicAlarm = null;
+  _musicStarted = false;
   setTimeout(() => fireAlarm(a), snoozeMin * 60 * 1000);
   showSnack(`${snoozeMin}分後に再通知します`);
 }
