@@ -1036,19 +1036,32 @@ async function remoteSave(data) {
   }
 }
 
-// ── 送信: 現在タブのユーザーのデータのみGASに完全上書き ──
+// ── 送信: GASの全ユーザーを保護しつつ現在ユーザーのみ上書き ──
 async function pushToRemote() {
   if (!getGasUrl()) return false;
-  // 現在のユーザーデータをキャッシュに書き込む
   const d = saveUserDataToCache();
   setGroupCache(d);
   const curUid = getCurrentUserId();
   const curUser = d.users.find(u => u.id === curUid);
   const g = getCurrentGroup();
-  // GASには現在ユーザー1件のみを含む payload を送信（完全上書き）
+
+  // まずGASから最新の全ユーザーを取得し、現在ユーザーだけ差し替える
+  const remote = await remoteLoad();
+  const remoteUsers = (remote && remote.users) ? remote.users.slice() : [];
+  if (curUser) {
+    const idx = remoteUsers.findIndex(u => u.id === curUid);
+    if (idx >= 0) remoteUsers[idx] = curUser;
+    else remoteUsers.push(curUser);
+  }
+
+  // deletedUsers はローカルとリモートをマージ
+  const remoteDeleted = (remote && remote.deletedUsers) ? remote.deletedUsers : [];
+  const mergedDeleted = remoteDeleted.slice();
+  (d.deletedUsers || []).forEach(lu => { if (!mergedDeleted.find(u => u.id === lu.id)) mergedDeleted.push(lu); });
+
   const payload = {
-    users: curUser ? [curUser] : [],
-    deletedUsers: d.deletedUsers || [],
+    users: remoteUsers,
+    deletedUsers: mergedDeleted,
     groupName: g ? g.name : '',
     _senderId: curUid,
     _sentAt: Date.now()
