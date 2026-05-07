@@ -267,16 +267,23 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-list-actions{display:flex;gap:6px;flex-shrink:0;}
 
 /* TIMER - フェーズ編集 */
-.phase-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
-.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;}
+.phase-list-wrap{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
+.phase-list{flex:1;display:flex;flex-direction:column;gap:6px;}
+.phase-move-panel{display:flex;flex-direction:column;gap:6px;flex-shrink:0;padding-top:2px;}
+.phase-move-panel-btn{width:32px;height:32px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);color:var(--text2);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;touch-action:manipulation;}
+.phase-move-panel-btn:active{background:var(--surface3);color:var(--text);}
+.phase-move-panel-btn:disabled{opacity:.25;cursor:default;}
+.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;transition:border-color .12s;}
+.phase-item.phase-selected{border-color:var(--accent);background:rgba(216,90,48,.04);}
 .phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
 .phase-item-top{display:flex;align-items:center;gap:6px;padding:8px 10px;}
 .phase-num{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;min-width:18px;}
 .phase-drag{display:none;}
-.phase-move-col{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
-.phase-move-btn{width:22px;height:20px;border:1px solid var(--border2);border-radius:5px;background:var(--surface2);color:var(--text2);font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;touch-action:manipulation;}
-.phase-move-btn:active{background:var(--surface3);color:var(--text);}
-.phase-move-btn:disabled{opacity:.25;cursor:default;}
+/* PC用ホバー削除ボタン */
+.phase-hover-del{width:24px;height:24px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;flex-shrink:0;}
+.phase-item:hover .phase-hover-del{opacity:1;}
+.phase-hover-del:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
+@media (hover: none){.phase-hover-del{display:none;}}
 /* フェーズ アンドゥバー */
 .phase-undo-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text2);margin-bottom:4px;}
 .phase-undo-btn{padding:4px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);color:var(--accent);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;}
@@ -300,10 +307,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   touch-action:manipulation;min-width:28px;min-height:20px;
 }
 .phase-sec-spin-btn:active{background:var(--surface3);color:var(--text);}
-.phase-del{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s;}
-.phase-del:hover{color:var(--red);}
-.phase-del:active{color:var(--red);}
-.phase-item.active-phase{border-color:var(--accent);background:rgba(216,90,48,.04);}
 .phase-item.active-phase .phase-num{color:var(--accent);font-weight:700;}
 .phase-item.drag-over-top{border-top:2.5px solid var(--accent);}
 .phase-item.drag-over-bottom{border-bottom:2.5px solid var(--accent);}
@@ -361,8 +364,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   <div class="app-title">Smart<span>Alarm</span></div>
   <div class="header-right">
     <div class="gas-sync-info" id="gas-sync-info" style="display:none;"></div>
-    <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="GASへ送信（上書き）">↑</button>
-    <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASから受信（統合）">↓</button>
+    <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="現在のユーザーデータをGASへ送信（上書き）">↑</button>
+    <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASから現在のユーザーデータを受信（マージ）">↓</button>
     <div class="header-clock" id="hdr-clock"></div>
     <div class="sync-dot" id="sync-dot" title="ローカル保存"></div>
   </div>
@@ -446,7 +449,13 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
     <!-- ── フェーズ編集 ── -->
     <div class="sec-label" style="margin-top:16px;">ステップの設定</div>
-    <div id="phase-list" class="phase-list"></div>
+    <div class="phase-list-wrap">
+      <div id="phase-list" class="phase-list"></div>
+      <div class="phase-move-panel" id="phase-move-panel">
+        <button class="phase-move-panel-btn" id="phase-move-up-btn" onclick="moveSelectedPhase(-1)" title="上へ移動" disabled>▲</button>
+        <button class="phase-move-panel-btn" id="phase-move-down-btn" onclick="moveSelectedPhase(1)" title="下へ移動" disabled>▼</button>
+      </div>
+    </div>
     <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
 
     <!-- ── 音の設定 ── -->
@@ -542,7 +551,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.0</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.1</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
     <div class="settings-row">
       <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
       <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
@@ -958,21 +967,29 @@ async function remoteSave(data) {
   }
 }
 
-// ── 送信: ローカルの全データをGASに完全上書き ──
+// ── 送信: 現在タブのユーザーのデータのみGASに完全上書き ──
 async function pushToRemote() {
   if (!getGasUrl()) return false;
-  // 現在ユーザーのデータを書き込んでから全体を送信
+  // 現在のユーザーデータをキャッシュに書き込む
   const d = saveUserDataToCache();
   setGroupCache(d);
+  const curUid = getCurrentUserId();
+  const curUser = d.users.find(u => u.id === curUid);
   const g = getCurrentGroup();
-  const payload = g ? { ...d, groupName: g.name } : d;
+  // GASには現在ユーザー1件のみを含む payload を送信（完全上書き）
+  const payload = {
+    users: curUser ? [curUser] : [],
+    deletedUsers: d.deletedUsers || [],
+    groupName: g ? g.name : '',
+    _senderId: curUid,
+    _sentAt: Date.now()
+  };
   const ok = await remoteSave(payload);
   updateGasSyncInfo(ok);
   return ok;
 }
 
-// ── 受信: tsuzukeru方式 ──
-// リモートを権威とし、現在ユーザーのデータはリモートで上書き、他ユーザーもリモートデータを使用
+// ── 受信: GASから現在タブのユーザーのデータのみをローカルにマージ ──
 async function syncFromRemote(silent = false) {
   if (!getGasUrl()) { setSyncDot('off'); if (!silent) showSnack('GAS URLが設定されていません'); return; }
   if (!silent) setSyncDot('syncing');
@@ -981,35 +998,27 @@ async function syncFromRemote(silent = false) {
     if (!remote) { if (!silent) setSyncDot('err'); if (!silent) showSnack('❌ 受信失敗。受信テストで確認してください。'); updateGasSyncInfo(false); return; }
 
     const local = getGroupCache();
-    const curUid = local.currentUserId;
+    const curUid = getCurrentUserId();
     const merged = { ...local };
 
+    // GASから現在タブのユーザーデータを探してマージ
+    const remoteUser = (remote.users || []).find(u => u.id === curUid);
+    if (remoteUser) {
+      const localUsers = (merged.users || []).slice();
+      const idx = localUsers.findIndex(u => u.id === curUid);
+      if (idx >= 0) {
+        // ローカルユーザーにリモートデータをマージ（リモート優先）
+        localUsers[idx] = { ...localUsers[idx], ...remoteUser };
+      } else {
+        localUsers.push(remoteUser);
+      }
+      merged.users = localUsers;
+    }
     // deletedUsers はローカルとリモートをマージ（両方を保持）
     const remoteDeleted = remote.deletedUsers || [];
     const localDeleted = (merged.deletedUsers || []).slice();
     remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
     merged.deletedUsers = localDeleted;
-
-    // リモートのusers一覧を基準にする（リモートが権威）
-    const newUsers = [];
-    (remote.users || []).forEach(ru => {
-      if (merged.deletedUsers.find(u => u.id === ru.id)) return;
-      if (ru.id === curUid) {
-        // 現在表示中のユーザー：リモートデータで完全上書き
-        const lu = merged.users.find(u => u.id === ru.id) || {};
-        newUsers.push({ ...lu, ...ru });
-      } else {
-        // 他ユーザー：リモートデータをそのまま使用
-        newUsers.push(ru);
-      }
-    });
-    // リモートに存在しないローカルユーザーを追加（削除済みは除く）
-    (merged.users || []).forEach(lu => {
-      if (!newUsers.find(u => u.id === lu.id) && !merged.deletedUsers.find(u => u.id === lu.id)) {
-        newUsers.push(lu);
-      }
-    });
-    merged.users = newUsers;
 
     // グループ名をリモートから反映
     if (remote.groupName) {
@@ -1020,23 +1029,11 @@ async function syncFromRemote(silent = false) {
 
     setGroupCache(merged);
 
-    // currentUserId が無効になっていた場合はpinnedへフォールバック
-    const pinned = getPinnedUserId();
-    const currentIsValid = !!merged.users.find(u => u.id === merged.currentUserId);
-    if (!currentIsValid) {
-      if (pinned && merged.users.find(u => u.id === pinned)) {
-        merged.currentUserId = pinned;
-      } else if (merged.users.length) {
-        merged.currentUserId = merged.users[0].id;
-      }
-      setGroupCache(merged);
-    }
-
     // 現在ユーザーデータを再ロードして全UI更新
     loadUserData();
     fullRefreshUI();
     if (!silent) setSyncDot('ok');
-    if (!silent) showSnack('✅ 受信しました（' + newUsers.length + '人）');
+    if (!silent) showSnack(remoteUser ? '✅ 受信しました（現在のユーザー）' : '⚠️ GASに自分のデータがありません');
     updateGasSyncInfo(true);
 
   } catch(err) {
@@ -1088,15 +1085,10 @@ function saveUserDataToCache() {
   return d;
 }
 
-// ローカル保存 + GAS自動送信（tsuzukeru方式）
+// ローカル保存のみ（GAS送信は手動の↑↓ボタンで実施）
 async function saveData() {
   const d = saveUserDataToCache();
   setGroupCache(d); // ローカルに即時保存
-  if (getGasUrl()) {
-    const g = getCurrentGroup();
-    const payload = g ? { ...d, groupName: g.name } : d;
-    remoteSave(payload).then(ok => { if (!ok) setSyncDot('err'); }).catch(() => setSyncDot('err'));
-  }
 }
 
 function saveUserData() { saveData(); }
@@ -1160,8 +1152,6 @@ function init() {
   tm.addEventListener('input', function() { clampNum(this, 0, 59); });
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
-  // 起動時サイレント受信（データ競合を避けるためpushはしない）
-  if (getGasUrl()) syncFromRemote(true);
 }
 
 function renderGroupName() {
@@ -2337,17 +2327,18 @@ function deleteUser(id) {
   showSnack('ユーザーを削除しました');
 }
 
-// ユーザータブをタップ（tsuzukeru方式）:
-//   親モードON  → currentUserId を切り替えるだけ（pinnedId＝自分は変わらない）
-//   親モードOFF → currentUserId と pinnedId 両方を切り替え（自分として設定）
+// ユーザータブをタップ:
+//   常に currentUserId と pinnedId 両方を切り替える（どのユーザーを表示中でも「自分」が変わる）
+//   親モードON時は全ユーザーのタブを表示しているため、タップしたユーザーが自分になる
 function switchUser(id) {
   const d = getGroupCache();
   d.currentUserId = id;
-  if (!isParentMode()) setPinnedUserId(id);
+  setPinnedUserId(id);
   setGroupCache(d);
   loadUserData();
   fullRefreshUI();
   updateNextInfo();
+  if (isParentMode()) showSnack('「' + (d.users.find(u => u.id === id)?.name || '') + '」に切り替えました');
 }
 
 // 親モードONのときに「このユーザーを自分にする」（タブ右クリック長押しから）
@@ -2510,6 +2501,7 @@ function openTimerDetail(id) {
   const preset = timerPresets.find(p => p.id === id);
   if (!preset) return;
   timerPhases = JSON.parse(JSON.stringify(preset.phases || []));
+  selectedPhaseIdx = -1;
 
   const titleEl = document.getElementById('timer-detail-title');
   if (titleEl) {
@@ -2543,6 +2535,9 @@ function saveCurrentPresetPhases() {
 // ───────────────────────────────────────────
 // TIMER PHASE EDIT
 // ───────────────────────────────────────────
+// 選択中のフェーズインデックス
+let selectedPhaseIdx = -1;
+
 function renderPhaseList() {
   const el = document.getElementById('phase-list');
   if (!el) return;
@@ -2558,56 +2553,70 @@ function renderPhaseList() {
     </div>`;
   }
 
+  // 選択インデックスを範囲内に丸める
+  if (timerPhases.length === 0) selectedPhaseIdx = -1;
+  else if (selectedPhaseIdx >= timerPhases.length) selectedPhaseIdx = timerPhases.length - 1;
+
   const phasesHtml = timerPhases.map((p, i) => {
     const isActive = timerState !== 'idle' && i === timerPhaseIdx;
-    const isFirst = i === 0, isLast = i === timerPhases.length - 1;
+    const isSel = i === selectedPhaseIdx;
     return `
-    <div class="phase-item${isActive ? ' active-phase' : ''}" data-i="${i}" id="phase-item-${i}">
+    <div class="phase-item${isActive ? ' active-phase' : ''}${isSel ? ' phase-selected' : ''}" data-i="${i}" id="phase-item-${i}" onclick="selectPhase(${i})">
       <div class="phase-swipe-del" id="psdel-${i}">削除</div>
       <div class="phase-item-inner" id="phase-inner-${i}" style="display:flex;flex-direction:column;">
         <div class="phase-item-top">
           <span class="phase-num">${i + 1}.</span>
-          <div class="phase-move-col">
-            <button class="phase-move-btn" onclick="movePhase(${i},-1)" ${isFirst ? 'disabled' : ''} title="上へ">▲</button>
-            <button class="phase-move-btn" onclick="movePhase(${i},1)" ${isLast ? 'disabled' : ''} title="下へ">▼</button>
-          </div>
           <input class="phase-announce-inline" value="${esc(p.announce || '')}"
             placeholder="アナウンス（例: 前歯を磨きます）"
+            onclick="event.stopPropagation();"
             oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();">
           <div class="phase-interval-wrap">
             <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
+              onclick="event.stopPropagation();"
               onfocus="if(!this._clearing){this._clearing=true;this.select();}"
               onblur="this._clearing=false;timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();renderPhaseList();"
               oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();">
             <div class="phase-sec-spin-col">
-              <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},1)">▲</button>
-              <button class="phase-sec-spin-btn" onclick="spinPhaseSec(${i},-1)">▼</button>
+              <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},1)">▲</button>
+              <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},-1)">▼</button>
             </div>
             <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
           </div>
-          ${timerState !== 'idle' ? `<button class="phase-skip-btn" onclick="timerJumpToStep(${i})">→</button>` : ''}
-          <button class="phase-del" onclick="deletePhase(${i})" title="削除">✕</button>
+          ${timerState !== 'idle' ? `<button class="phase-skip-btn" onclick="event.stopPropagation();timerJumpToStep(${i})">→</button>` : ''}
+          <button class="phase-hover-del" onclick="event.stopPropagation();deletePhase(${i})" title="削除">✕</button>
         </div>
       </div>
     </div>`;
   }).join('');
 
   el.innerHTML = undoHtml + phasesHtml;
+  updateMovePanel();
   initPhaseSwipe();
 }
 
-function movePhase(i, delta) {
-  const j = i + delta;
+function selectPhase(i) {
+  selectedPhaseIdx = i;
+  renderPhaseList();
+}
+
+function updateMovePanel() {
+  const upBtn = document.getElementById('phase-move-up-btn');
+  const dnBtn = document.getElementById('phase-move-down-btn');
+  if (!upBtn || !dnBtn) return;
+  const hasSel = selectedPhaseIdx >= 0 && timerPhases.length > 0;
+  upBtn.disabled = !hasSel || selectedPhaseIdx === 0;
+  dnBtn.disabled = !hasSel || selectedPhaseIdx >= timerPhases.length - 1;
+}
+
+function moveSelectedPhase(delta) {
+  if (selectedPhaseIdx < 0) return;
+  const j = selectedPhaseIdx + delta;
   if (j < 0 || j >= timerPhases.length) return;
-  [timerPhases[i], timerPhases[j]] = [timerPhases[j], timerPhases[i]];
+  [timerPhases[selectedPhaseIdx], timerPhases[j]] = [timerPhases[j], timerPhases[selectedPhaseIdx]];
+  selectedPhaseIdx = j;
   saveCurrentPresetPhases();
   renderPhaseList();
   timerUpdateDisplay();
-  // 移動後のボタンにフォーカスを保持
-  setTimeout(() => {
-    const btn = document.querySelector(`#phase-item-${j} .phase-move-btn:${delta < 0 ? 'first-child' : 'last-child'}`);
-    if (btn && !btn.disabled) btn.focus();
-  }, 30);
 }
 
 function spinPhaseSec(i, delta) {
@@ -2627,7 +2636,7 @@ function addPhase() {
   timerUpdateDisplay();
   // 追加したステップのアナウンス欄にフォーカス
   setTimeout(() => {
-    const inputs = document.querySelectorAll('.phase-announce-input');
+    const inputs = document.querySelectorAll('.phase-announce-inline');
     if (inputs.length) inputs[inputs.length - 1].focus();
   }, 50);
 }
@@ -2637,6 +2646,8 @@ function deletePhase(i) {
   // アンドゥスタックに追加（最大5件）
   phaseUndoStack.push({ phase: removed, index: i });
   if (phaseUndoStack.length > 5) phaseUndoStack.shift();
+  // 選択インデックスを調整
+  if (selectedPhaseIdx >= timerPhases.length) selectedPhaseIdx = timerPhases.length - 1;
   saveCurrentPresetPhases();
   renderPhaseList();
   timerUpdateDisplay();
