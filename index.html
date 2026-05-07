@@ -2290,11 +2290,63 @@ function saveGasUrl() {
   if (g) { g.gasUrl = url; saveGroups(groups); }
   renderGroupName();
   if (url) {
-    showSnack('GAS URLを保存しました。同期中…');
-    syncFromRemote();
+    showSnack('GAS URLを保存しました。全ユーザーを同期中…');
+    syncAllUsersFromRemote();
   } else {
     setSyncDot('off');
     showSnack('GAS URLを削除しました');
+  }
+}
+
+// ── 接続・同期ボタン専用: GASの全ユーザーをローカルにマージ ──
+async function syncAllUsersFromRemote() {
+  if (!getGasUrl()) { setSyncDot('off'); showSnack('GAS URLが設定されていません'); return; }
+  setSyncDot('syncing');
+  try {
+    const remote = await remoteLoad();
+    if (!remote) { setSyncDot('err'); showSnack('❌ 受信失敗。受信テストで確認してください。'); updateGasSyncInfo(false); return; }
+
+    const local = getGroupCache();
+    const merged = { ...local };
+    const localUsers = (merged.users || []).slice();
+
+    // GASの全ユーザーをローカルにマージ（リモート優先、IDが一致すれば上書き、新規なら追加）
+    (remote.users || []).forEach(remoteUser => {
+      const idx = localUsers.findIndex(u => u.id === remoteUser.id);
+      if (idx >= 0) {
+        localUsers[idx] = { ...localUsers[idx], ...remoteUser };
+      } else {
+        localUsers.push(remoteUser);
+      }
+    });
+    merged.users = localUsers;
+
+    // deletedUsers もマージ
+    const remoteDeleted = remote.deletedUsers || [];
+    const localDeleted = (merged.deletedUsers || []).slice();
+    remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
+    merged.deletedUsers = localDeleted;
+
+    // グループ名をリモートから反映
+    if (remote.groupName) {
+      const groups = loadGroups(); const gid = getCurrentGroupId();
+      const g = groups.find(g => g.id === gid);
+      if (g && g.gasUrl && remote.groupName !== g.name) { g.name = remote.groupName; saveGroups(groups); }
+    }
+
+    setGroupCache(merged);
+    loadUserData();
+    fullRefreshUI();
+    setSyncDot('ok');
+    const addedCount = (remote.users || []).length;
+    showSnack(`✅ 全ユーザーを受信しました（${addedCount}人）`);
+    updateGasSyncInfo(true);
+
+  } catch(err) {
+    console.error('[syncAllUsersFromRemote] エラー:', err);
+    setSyncDot('err');
+    showSnack('❌ 同期エラー: ' + (err.message || err));
+    updateGasSyncInfo(false);
   }
 }
 
@@ -2580,7 +2632,7 @@ function saveGroupGasUrl() {
   renderGroupName();
   document.getElementById('gas-url-input').value = url;
   renderGroupSheet();
-  if (url) { showSnack('GAS URLを保存しました。同期中…'); syncFromRemote(); }
+  if (url) { showSnack('GAS URLを保存しました。全ユーザーを同期中…'); syncAllUsersFromRemote(); }
   else { setSyncDot('off'); showSnack('GAS URLを削除しました'); }
 }
 
