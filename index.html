@@ -9,8 +9,21 @@
 <meta name="apple-mobile-web-app-title" content="SmartAlarm">
 <link rel="manifest" href="manifest.json">
 <title>SmartAlarm</title>
+<!-- テーマ初期化：チラつき防止のためCSSより前に実行 -->
+<script>
+(function(){
+  var t=localStorage.getItem('sa_theme')||'dark';
+  if(t==='system'){
+    var d=window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme',d?'dark':'light');
+  } else {
+    document.documentElement.setAttribute('data-theme',t);
+  }
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* ── テーマ変数（ダーク：デフォルト） ── */
 :root {
   --bg:#1C1A17; --surface:#252320; --surface2:#2E2B27; --surface3:#383430;
   --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.15);
@@ -22,6 +35,26 @@
   --red:#C03030; --red-l:rgba(192,48,48,.2);
   --font:'Noto Sans JP',sans-serif; --mono:'DM Mono',monospace;
 }
+/* ライトモード */
+[data-theme="light"] {
+  --bg:#F7F4EF; --surface:#FFFFFF; --surface2:#F0EDE8; --surface3:#E8E4DE;
+  --border:rgba(0,0,0,.10); --border2:rgba(0,0,0,.18);
+  --text:#1A1714; --text2:#6B665F; --text3:#9C9790;
+  --accent:#D85A30; --accent-l:rgba(216,90,48,.12); --accent-d:#993C1D;
+  --green:#3B6D11; --green-l:rgba(59,109,17,.14);
+  --amber:#BA7517; --amber-l:rgba(186,117,23,.14);
+  --blue:#185FA5; --blue-l:rgba(24,95,165,.12);
+  --red:#A32D2D; --red-l:rgba(163,45,45,.12);
+}
+/* テーマ切り替えボタン */
+.theme-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s;flex-shrink:0;}
+.theme-btn:active{background:var(--accent-l);color:var(--accent);}
+/* テーマ設定カード */
+.theme-opts{display:flex;gap:8px;flex-wrap:wrap;}
+.theme-opt{flex:1;min-width:80px;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:12px;font-family:var(--font);cursor:pointer;text-align:center;transition:border-color .12s,color .12s,background .12s;}
+.theme-opt.sel{border-color:var(--accent);color:var(--accent);background:var(--accent-l);}
+.theme-opt:active{background:var(--accent-l);}
+.theme-opt-icon{font-size:20px;display:block;margin-bottom:4px;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;font-size:14px;}
 
@@ -260,7 +293,7 @@ select.form-input{-webkit-appearance:none;background-image:url("data:image/svg+x
 select.form-input option{background:var(--surface2);color:var(--text);}
 
 /* FIRING */
-#firing-overlay{position:fixed;inset:0;z-index:500;background:#18140F;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+#firing-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 #firing-overlay.open{display:flex;}
 .firing-time{font-family:var(--mono);font-size:80px;font-weight:400;color:var(--accent);line-height:1;}
 .firing-label{font-size:18px;color:var(--text2);}
@@ -381,6 +414,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <div class="gas-sync-info" id="gas-sync-info" style="display:none;"></div>
     <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="現在のユーザーデータをGASへ送信（上書き）">↑</button>
     <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASから現在のユーザーデータを受信（マージ）">↓</button>
+    <button class="theme-btn" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
     <div class="header-clock" id="hdr-clock"></div>
     <div class="sync-dot" id="sync-dot" title="ローカル保存"></div>
   </div>
@@ -495,6 +529,26 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <!-- SETTINGS VIEW -->
 <div id="view-settings" class="view">
 
+  <!-- テーマ設定 -->
+  <div class="sec-label">テーマ・外観</div>
+  <div class="settings-card">
+    <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div class="settings-row-title">カラーテーマ</div>
+      <div class="theme-opts">
+        <button class="theme-opt" data-theme-val="dark" onclick="setTheme('dark')">
+          <span class="theme-opt-icon">🌙</span>ダーク
+        </button>
+        <button class="theme-opt" data-theme-val="light" onclick="setTheme('light')">
+          <span class="theme-opt-icon">☀️</span>ライト
+        </button>
+        <button class="theme-opt" data-theme-val="system" onclick="setTheme('system')">
+          <span class="theme-opt-icon">📱</span>システム連動
+        </button>
+      </div>
+      <div class="settings-row-sub" id="theme-system-note" style="display:none;">スマホ・PCのダーク/ライトモード設定に自動で追従します</div>
+    </div>
+  </div>
+
   <!-- GAS共有設定 -->
   <div class="sec-label">グループ・クラウド同期</div>
   <div class="settings-card">
@@ -566,7 +620,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.2</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.3</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
     <div class="settings-row">
       <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
       <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
@@ -1128,6 +1182,9 @@ function loadUserData() {
 // INIT
 // ───────────────────────────────────────────
 function init() {
+  // テーマ初期化（最初に実行してチラつきを防ぐ）
+  initTheme();
+
   // グループが未設定なら default グループを作成
   let groups = loadGroups();
   if (!groups.length) {
@@ -2058,9 +2115,41 @@ function fireAlarm(a) {
 
 function startAlarmSound(a) {
   stopAlarmSound();
-  if (a.sound === 'music' && musicStore[a.id]) {
-    firingAudio = new Audio(musicStore[a.id].data);
-    firingAudio.loop = true; firingAudio.play().catch(() => {});
+  // musicStoreを最新のlocalStorageから再取得（ユーザー切替後でも確実に参照）
+  const uid = getCurrentUserId();
+  let freshMusicStore = musicStore;
+  try {
+    const raw = localStorage.getItem('sa_music_' + uid);
+    if (raw) freshMusicStore = JSON.parse(raw);
+  } catch (e) {}
+
+  if (a.sound === 'music' && freshMusicStore[a.id]?.data) {
+    const audioData = freshMusicStore[a.id].data;
+    try {
+      firingAudio = new Audio();
+      firingAudio.loop = true;
+      firingAudio.src = audioData;
+      // ユーザー操作（STOPボタン表示のタップ）で再生が許可される前提だが、
+      // fireAlarmはアラーム鳴動時（checkAlarms内）から呼ばれるため
+      // Autoplay制限対策: load()後にplay()
+      firingAudio.load();
+      const playPromise = firingAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          // Autoplay blocked: フォールバックとしてbeepを鳴らす
+          console.warn('[startAlarmSound] music play blocked:', err.message);
+          firingAudio = null;
+          firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+          loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+          playTones(firingCtx, 'beep', 1);
+        });
+      }
+    } catch (e) {
+      console.warn('[startAlarmSound] Audio error:', e);
+      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+      loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+      playTones(firingCtx, 'beep', 1);
+    }
   } else {
     firingCtx = new (window.AudioContext || window.webkitAudioContext)();
     loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
@@ -3138,6 +3227,66 @@ function showSnack(msg) {
   const el = document.getElementById('snackbar');
   el.textContent = msg; el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ───────────────────────────────────────────
+// THEME
+// ───────────────────────────────────────────
+const THEME_KEY = 'sa_theme';
+let _themeMediaQuery = null;
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'dark';
+  applyTheme(saved, false);
+}
+
+function applyTheme(mode, save = true) {
+  if (save) localStorage.setItem(THEME_KEY, mode);
+
+  // systemメディアクエリリスナーを一旦外す
+  if (_themeMediaQuery) {
+    try { _themeMediaQuery.removeEventListener('change', _onSystemThemeChange); } catch (e) {}
+    _themeMediaQuery = null;
+  }
+
+  const html = document.documentElement;
+  if (mode === 'system') {
+    // OSのダーク/ライトに連動
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    _themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    _themeMediaQuery.addEventListener('change', _onSystemThemeChange);
+  } else {
+    html.setAttribute('data-theme', mode);
+  }
+  updateThemeUI(mode);
+}
+
+function _onSystemThemeChange(e) {
+  document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+}
+
+function setTheme(mode) { applyTheme(mode); }
+
+function cycleTheme() {
+  const cur = localStorage.getItem(THEME_KEY) || 'dark';
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? 'system' : 'dark';
+  applyTheme(next);
+}
+
+function updateThemeUI(mode) {
+  // ヘッダーボタンのアイコン
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '📱';
+
+  // 設定ページのオプションボタン
+  document.querySelectorAll('.theme-opt').forEach(el => {
+    el.classList.toggle('sel', el.dataset.themeVal === mode);
+  });
+
+  // システム連動の説明文
+  const note = document.getElementById('theme-system-note');
+  if (note) note.style.display = mode === 'system' ? '' : 'none';
 }
 
 init();
