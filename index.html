@@ -143,6 +143,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 .icon-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s,border-color .12s;}
 .icon-btn.edit:active{background:var(--amber-l);color:var(--amber);border-color:var(--amber);}
+.icon-btn.edit .pencil-emoji{display:inline-block;transform:scaleX(-1);line-height:1;}
 .icon-btn.del:active{background:var(--red-l);color:var(--red);border-color:var(--red);}
 
 .empty-state{text-align:center;padding:60px 20px;color:var(--text3);font-size:13px;line-height:2;}
@@ -604,6 +605,9 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <button class="btn-primary" style="flex:1;padding:10px;" onclick="saveGasUrl()">接続・同期</button>
         <button class="settings-btn" onclick="testGasReceive()" title="GASから実際に受信できるかテストします">受信テスト</button>
         <button class="settings-btn" style="color:var(--red);" onclick="disconnectGas()">接続解除</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button class="settings-btn" style="flex:1;font-size:11px;color:var(--amber);" onclick="repairGasData()" title="GASのusers/deletedUsersの矛盾を修復して全ユーザー送信します">🔧 GASデータを修復・再送信</button>
       </div>
       <div id="gas-test-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);font-size:11px;font-family:monospace;color:var(--text2);word-break:break-all;white-space:pre-wrap;max-height:120px;overflow-y:auto;"></div>
       <div style="margin-top:6px;">
@@ -1124,78 +1128,72 @@ async function remoteSave(data) {
   }
 }
 
-// ── 送信: GASの全ユーザーを保護しつつ現在ユーザーのみ上書き ──
+// ────────────────────────────────────────────────────────
+// GAS 同期 設計方針：
+//   ・users 配列に存在する = 有効ユーザー（真実の源泉）
+//   ・deletedUsers はアプリUI上のゴミ箱管理のみ。GAS間での
+//     ユーザー存在判定には一切使わない（矛盾データへの耐性）
+//   ・送信: GASから全ユーザーを取得 → 自分だけ差し替えて書き戻す
+//          GASが空/エラーの場合は自分のデータだけで初回書き込み
+//   ・受信: GASから自分のIDを検索してローカルに上書き
+//          見つからなければ「GASに未登録」として何もしない
+// ────────────────────────────────────────────────────────
+
+// ── 送信: 現在ユーザーのデータをGASへ（他ユーザーは保護） ──
 async function pushToRemote() {
   if (!getGasUrl()) return false;
   setSyncDot('syncing');
+
+  // ローカルの現在状態をキャッシュに書き込む
   const d = saveUserDataToCache();
   setGroupCache(d);
   const curUid = getCurrentUserId();
   const curUser = d.users.find(u => u.id === curUid);
   const g = getCurrentGroup();
-  const localDeletedIds = new Set((d.deletedUsers || []).map(u => u.id));
 
-  // まずGASから最新の全ユーザーを取得する（他ユーザーを保護するため）
+  // GASから現在の全データを取得（他ユーザーのデータを上書き消しないため）
   const remote = await remoteLoad();
 
+  let remoteUsers;
   if (remote === null) {
-    // GASが空またはネットワークエラー。
-    // ローカルに（削除済みを除いた）アクティブユーザーが複数いる場合も、
-    // 自分のデータのみで初回書き込みを許可する（他ユーザーはまだGASにいない）。
-    const payload = {
-      users: curUser ? [{ ...curUser }] : [],
-      deletedUsers: d.deletedUsers || [],
-      groupName: g ? g.name : '',
-      _senderId: curUid,
-      _sentAt: Date.now()
-    };
-    const ok = await remoteSave(payload);
-    updateGasSyncInfo(ok);
-    if (!ok) console.warn('[pushToRemote] GAS初回書き込み失敗');
-    return ok;
+    // GASが空（初回）またはネットワークエラー
+    // → 自分のデータのみで書き込む（他ユーザーはまだGASにいない）
+    console.log('[pushToRemote] GAS空または初回 → 自分のデータのみ書き込み');
+    remoteUsers = curUser ? [JSON.parse(JSON.stringify(curUser))] : [];
+  } else {
+    // GASの全ユーザーをベースに、自分のデータだけ差し替える
+    // ※ deletedUsers によるフィルタはしない（矛盾データへの耐性）
+    remoteUsers = (remote.users || []).slice();
+    if (curUser) {
+      const idx = remoteUsers.findIndex(u => u.id === curUid);
+      if (idx >= 0) {
+        remoteUsers[idx] = JSON.parse(JSON.stringify(curUser));
+      } else {
+        remoteUsers.push(JSON.parse(JSON.stringify(curUser)));
+      }
+    }
   }
-
-  // GASの全ユーザーリストをベースに、現在ユーザーだけ差し替える
-  // ただし deletedUsers に含まれるユーザーはリモートからも除外する
-  const remoteDeletedIds = new Set((remote.deletedUsers || []).map(u => u.id));
-  const allDeletedIds = new Set([...localDeletedIds, ...remoteDeletedIds]);
-
-  let remoteUsers = (remote.users ? remote.users.slice() : [])
-    .filter(u => !allDeletedIds.has(u.id)); // 削除済みユーザーをリモートからも除去
-
-  if (curUser && !allDeletedIds.has(curUid)) {
-    const idx = remoteUsers.findIndex(u => u.id === curUid);
-    if (idx >= 0) remoteUsers[idx] = curUser;
-    else remoteUsers.push(curUser);
-  }
-
-  // deletedUsers はローカルとリモートをマージ（両方を保持）
-  const mergedDeleted = (remote.deletedUsers || []).slice();
-  (d.deletedUsers || []).forEach(lu => {
-    if (!mergedDeleted.find(u => u.id === lu.id)) mergedDeleted.push(lu);
-  });
 
   const payload = {
     users: remoteUsers,
-    deletedUsers: mergedDeleted,
     groupName: g ? g.name : '',
     _senderId: curUid,
     _sentAt: Date.now()
   };
   const ok = await remoteSave(payload);
   updateGasSyncInfo(ok);
+  if (!ok) console.warn('[pushToRemote] GAS書き込み失敗');
   return ok;
 }
 
-// ── 受信: GASから現在タブのユーザーのデータのみをローカルにマージ ──
+// ── 受信: GASから現在ユーザーのデータをローカルに上書き ──
 async function syncFromRemote(silent = false) {
   if (!getGasUrl()) { setSyncDot('off'); if (!silent) showSnack('GAS URLが設定されていません'); return; }
   if (!silent) setSyncDot('syncing');
   try {
     const remote = await remoteLoad();
     if (!remote) {
-      if (!silent) setSyncDot('err');
-      if (!silent) showSnack('❌ 受信失敗。受信テストで確認してください。');
+      if (!silent) { setSyncDot('err'); showSnack('❌ 受信失敗。受信テストで確認してください。'); }
       updateGasSyncInfo(false);
       return;
     }
@@ -1203,63 +1201,43 @@ async function syncFromRemote(silent = false) {
     const local = getGroupCache();
     const curUid = getCurrentUserId();
 
-    // GASから現在ユーザーのデータを探す（削除済みユーザーは無視）
-    const allDeletedIds = new Set([
-      ...(remote.deletedUsers || []).map(u => u.id),
-      ...(local.deletedUsers || []).map(u => u.id)
-    ]);
-    const remoteUser = (remote.users || []).find(u => u.id === curUid && !allDeletedIds.has(u.id));
+    // GASから現在ユーザーのデータを探す
+    // ※ deletedUsers でフィルタしない（GASのusers配列が真実）
+    const remoteUser = (remote.users || []).find(u => u.id === curUid);
 
     if (!remoteUser) {
-      // GASに自分のデータがない → ローカルは変更しない
-      if (!silent) setSyncDot('ok');
-      if (!silent) showSnack('⚠️ GASに自分のデータがありません（ローカルは変更しません）');
-      updateGasSyncInfo(true);
+      // GASに自分のIDが存在しない → まだ一度も送信していない状態
+      if (!silent) { setSyncDot('ok'); showSnack('⚠️ GASにこのユーザーのデータがありません。先に ↑ で送信してください。'); }
+      updateGasSyncInfo(false);
       return;
     }
 
-    // 現在ユーザーのデータのみをローカルに反映（他ユーザーのローカルデータは触らない）
+    // 現在ユーザーのデータのみをローカルに上書き（他ユーザーは触らない）
     const localUsers = (local.users || []).slice();
     const idx = localUsers.findIndex(u => u.id === curUid);
     if (idx >= 0) {
-      // リモート優先でマージ
-      localUsers[idx] = { ...localUsers[idx], ...remoteUser };
+      localUsers[idx] = JSON.parse(JSON.stringify(remoteUser));
     } else {
-      localUsers.push(remoteUser);
+      localUsers.push(JSON.parse(JSON.stringify(remoteUser)));
     }
-
-    // deletedUsers: リモートにあってローカルにない項目のみ追加（逆方向は追加しない）
-    // → 古いdeleted項目がリモートから復活しないよう、現在ユーザーのdeleted項目のみ受け取る
-    const remoteDeleted = (remote.deletedUsers || []).filter(ru => ru.userId === curUid || !ru.userId);
-    const localDeleted = (local.deletedUsers || []).slice();
-    remoteDeleted.forEach(ru => {
-      if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru);
-    });
-
-    const merged = {
-      ...local,
-      users: localUsers,
-      deletedUsers: localDeleted
-    };
 
     // グループ名をリモートから反映
     if (remote.groupName) {
       const groups = loadGroups();
       const gid = getCurrentGroupId();
-      const g = groups.find(g => g.id === gid);
-      if (g && g.gasUrl && remote.groupName !== g.name) {
-        g.name = remote.groupName;
+      const gg = groups.find(g => g.id === gid);
+      if (gg && gg.gasUrl && remote.groupName !== gg.name) {
+        gg.name = remote.groupName;
         saveGroups(groups);
       }
     }
 
+    const merged = { ...local, users: localUsers };
     setGroupCache(merged);
 
-    // 現在ユーザーデータを再ロードして全UI更新
     loadUserData();
     fullRefreshUI();
-    if (!silent) setSyncDot('ok');
-    if (!silent) showSnack('✅ 受信しました（現在のユーザー）');
+    if (!silent) { setSyncDot('ok'); showSnack('✅ 受信しました（' + (remoteUser.name || curUid) + '）'); }
     updateGasSyncInfo(true);
 
   } catch(err) {
@@ -1505,6 +1483,38 @@ function getSheet() {
   return sheet;
 }`;
   alert('GASスクリプト:\n\n' + tmpl + '\n\n上記をGASエディタに貼り付け、「ウェブアプリとしてデプロイ」→「アクセス: 全員」で公開してください。');
+}
+
+// ── GASデータ修復: ローカルの全ユーザーをGASに上書き送信（矛盾データのリセット） ──
+async function repairGasData() {
+  const url = getGasUrl();
+  if (!url) { showSnack('GAS URLが設定されていません'); return; }
+  if (!confirm('GASのデータをローカルの全ユーザーで上書きします。\n\nGASに存在してローカルにいないユーザーのデータは失われます。\n\nよろしいですか？')) return;
+
+  setSyncDot('syncing');
+  showSnack('🔧 GASデータを修復中…');
+
+  // ローカルの現在ユーザーを保存
+  const d = saveUserDataToCache();
+  setGroupCache(d);
+  const g = getCurrentGroup();
+
+  // ローカルの全ユーザーをそのまま送信（deletedUsersは送らない）
+  const payload = {
+    users: JSON.parse(JSON.stringify(d.users || [])),
+    groupName: g ? g.name : '',
+    _senderId: getCurrentUserId(),
+    _sentAt: Date.now(),
+    _repaired: true
+  };
+
+  const ok = await remoteSave(payload);
+  updateGasSyncInfo(ok);
+  if (ok) {
+    showSnack('✅ GASデータを修復・送信しました（' + (d.users || []).length + 'ユーザー）');
+  } else {
+    showSnack('❌ 修復送信に失敗しました');
+  }
 }
 
 async function headerPushToRemote() {
@@ -1861,7 +1871,7 @@ function renderAlarms() {
               <div class="sw-track"></div>
               <div class="sw-thumb"></div>
             </label>
-            <button class="icon-btn edit" onclick="openModal('${a.id}')">✏️</button>
+            <button class="icon-btn edit" onclick="openModal('${a.id}')"><span class="pencil-emoji">✏️</span></button>
             <button class="alarm-hover-del" onclick="trashAlarm('${a.id}')" title="削除（ゴミ箱へ）">✕</button>
           </div>
       </div>`;
@@ -2546,31 +2556,18 @@ async function syncAllUsersFromRemote() {
     if (!remote) { setSyncDot('err'); showSnack('❌ 受信失敗。受信テストで確認してください。'); updateGasSyncInfo(false); return; }
 
     const local = getGroupCache();
-    const merged = { ...local };
+    const localUsers = (local.users || []).slice();
 
-    // 削除済みIDセット（ローカル＋リモートをまとめて）
-    const remoteDeletedIds = new Set((remote.deletedUsers || []).map(u => u.id));
-    const localDeletedIds = new Set((merged.deletedUsers || []).map(u => u.id));
-    const allDeletedIds = new Set([...remoteDeletedIds, ...localDeletedIds]);
-
-    const localUsers = (merged.users || []).filter(u => !allDeletedIds.has(u.id));
-
-    // GASの全ユーザーをローカルにマージ（リモート優先、削除済みは除外）
-    (remote.users || []).filter(u => !allDeletedIds.has(u.id)).forEach(remoteUser => {
+    // GASの全ユーザーをローカルにマージ
+    // ※ deletedUsers でフィルタしない（GASのusers配列が真実）
+    (remote.users || []).forEach(remoteUser => {
       const idx = localUsers.findIndex(u => u.id === remoteUser.id);
       if (idx >= 0) {
-        localUsers[idx] = { ...localUsers[idx], ...remoteUser };
+        localUsers[idx] = JSON.parse(JSON.stringify(remoteUser));
       } else {
-        localUsers.push(remoteUser);
+        localUsers.push(JSON.parse(JSON.stringify(remoteUser)));
       }
     });
-    merged.users = localUsers;
-
-    // deletedUsers もマージ
-    const remoteDeleted = remote.deletedUsers || [];
-    const localDeleted = (merged.deletedUsers || []).slice();
-    remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
-    merged.deletedUsers = localDeleted;
 
     // グループ名をリモートから反映
     if (remote.groupName) {
@@ -2579,12 +2576,12 @@ async function syncAllUsersFromRemote() {
       if (g && g.gasUrl && remote.groupName !== g.name) { g.name = remote.groupName; saveGroups(groups); }
     }
 
+    const merged = { ...local, users: localUsers };
     setGroupCache(merged);
     loadUserData();
     fullRefreshUI();
     setSyncDot('ok');
-    const addedCount = (remote.users || []).length;
-    showSnack(`✅ 全ユーザーを受信しました（${addedCount}人）`);
+    showSnack(`✅ 全ユーザーを受信しました（${(remote.users || []).length}人）`);
     updateGasSyncInfo(true);
 
   } catch(err) {
