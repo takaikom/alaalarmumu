@@ -81,6 +81,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .view{display:none;padding:12px 16px 120px;}
 .view.active{display:block;}
 .sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:16px 0 8px;}
+.sec-label-row{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px;}
+.sec-label-row .sec-label{margin:0;}
+.lock-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s,border-color .12s;flex-shrink:0;}
+.lock-btn.locked{color:var(--amber);border-color:var(--amber);background:var(--amber-l);}
+.lock-btn:active{background:var(--surface3);}
+.edit-locked .phase-announce-inline,.edit-locked .phase-sec-input,.edit-locked .phase-sec-spin-btn,.edit-locked .phase-hover-del{pointer-events:none;opacity:.5;}
+.edit-locked .phase-item{cursor:default;}
+.edit-locked .btn-add-phase{pointer-events:none;opacity:.4;}
+.edit-locked .phase-move-panel-btn{pointer-events:none;opacity:.25;}
+.alarm-edit-locked .alarm-hover-del{pointer-events:none;opacity:0 !important;}
+.alarm-edit-locked .alarm-card{touch-action:auto;}
+.timer-edit-locked .timer-hover-del{pointer-events:none;opacity:0 !important;}
+.timer-edit-locked .timer-list-card{touch-action:auto;}
+
 
 /* ALARM CARDS */
 .alarm-list{display:flex;flex-direction:column;gap:8px;}
@@ -313,6 +327,14 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-list-card-sub{font-size:11px;color:var(--text3);margin-top:2px;}
 .timer-list-card-arrow{font-size:18px;color:var(--text3);}
 .timer-list-actions{display:flex;gap:6px;flex-shrink:0;}
+/* タイマーカードのスワイプ削除 */
+.timer-swipe-wrap{position:relative;border-radius:14px;overflow:hidden;margin-bottom:8px;}
+.timer-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
+.timer-swipe-del.visible{opacity:1;}
+.timer-swipe-wrap:hover .timer-hover-del{opacity:1;pointer-events:auto;}
+.timer-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;flex-shrink:0;}
+.timer-hover-del:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
+@media (hover: none){.timer-hover-del{display:none !important;}}
 
 /* TIMER - フェーズ編集 */
 .phase-list-wrap{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
@@ -430,7 +452,10 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 <!-- ALARMS VIEW -->
 <div id="view-alarms" class="view active">
-  <div class="sec-label">登録済みアラーム</div>
+  <div class="sec-label-row">
+    <div class="sec-label">登録済みアラーム</div>
+    <button class="lock-btn" id="alarm-lock-btn" onclick="toggleAlarmLock()" title="編集ロック">🔓</button>
+  </div>
   <div class="alarm-list" id="alarm-list"></div>
 </div>
 
@@ -463,7 +488,10 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <!-- TIMER VIEW (一覧) -->
 <div id="view-timer" class="view">
   <div id="timer-list-view">
-    <div class="sec-label">タイマー</div>
+    <div class="sec-label-row">
+      <div class="sec-label">タイマー</div>
+      <button class="lock-btn" id="timer-lock-btn" onclick="toggleTimerLock()" title="編集ロック">🔓</button>
+    </div>
     <div id="timer-card-list"></div>
     <button class="btn-add-phase" style="margin-top:8px;" onclick="addTimerPreset()">＋ タイマーを追加</button>
   </div>
@@ -497,7 +525,10 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     </div>
 
     <!-- ── フェーズ編集 ── -->
-    <div class="sec-label" style="margin-top:16px;">ステップの設定</div>
+    <div class="sec-label-row" style="margin-top:16px;">
+      <div class="sec-label">ステップの設定</div>
+      <button class="lock-btn" id="phase-lock-btn" onclick="togglePhaseLock()" title="編集ロック">🔓</button>
+    </div>
     <div class="phase-list-wrap">
       <div id="phase-list" class="phase-list"></div>
       <div class="phase-move-panel" id="phase-move-panel">
@@ -969,6 +1000,42 @@ let timerTotalElapsed = 0;
 let timerTotalSec = 0;
 let phaseUndoStack = []; // {phase, index} の配列（最大5件）
 
+// ── 編集ロック状態 ──
+let alarmLocked = false;
+let timerLocked = false;
+let phaseLocked = false;
+
+function toggleAlarmLock() {
+  alarmLocked = !alarmLocked;
+  const btn = document.getElementById('alarm-lock-btn');
+  if (btn) { btn.textContent = alarmLocked ? '🔒' : '🔓'; btn.classList.toggle('locked', alarmLocked); }
+  const list = document.getElementById('alarm-list');
+  if (list) list.classList.toggle('alarm-edit-locked', alarmLocked);
+  showSnack(alarmLocked ? '🔒 アラーム編集をロックしました' : '🔓 アラーム編集のロックを解除しました');
+}
+
+function toggleTimerLock() {
+  timerLocked = !timerLocked;
+  const btn = document.getElementById('timer-lock-btn');
+  if (btn) { btn.textContent = timerLocked ? '🔒' : '🔓'; btn.classList.toggle('locked', timerLocked); }
+  const list = document.getElementById('timer-card-list');
+  if (list) list.classList.toggle('timer-edit-locked', timerLocked);
+  const addBtn = document.querySelector('#timer-list-view .btn-add-phase');
+  if (addBtn) { addBtn.style.pointerEvents = timerLocked ? 'none' : ''; addBtn.style.opacity = timerLocked ? '.4' : ''; }
+  showSnack(timerLocked ? '🔒 タイマー編集をロックしました' : '🔓 タイマー編集のロックを解除しました');
+}
+
+function togglePhaseLock() {
+  phaseLocked = !phaseLocked;
+  const btn = document.getElementById('phase-lock-btn');
+  if (btn) { btn.textContent = phaseLocked ? '🔒' : '🔓'; btn.classList.toggle('locked', phaseLocked); }
+  const wrap = document.querySelector('.phase-list-wrap');
+  if (wrap) wrap.classList.toggle('edit-locked', phaseLocked);
+  const addPhaseBtn = document.querySelector('.btn-add-phase');
+  if (addPhaseBtn) { addPhaseBtn.style.pointerEvents = phaseLocked ? 'none' : ''; addPhaseBtn.style.opacity = phaseLocked ? '.4' : ''; }
+  showSnack(phaseLocked ? '🔒 ステップ編集をロックしました' : '🔓 ステップ編集のロックを解除しました');
+}
+
 // ───────────────────────────────────────────
 // SYNC DOT
 // ───────────────────────────────────────────
@@ -1039,6 +1106,15 @@ async function remoteSave(data) {
     }
     const text = await res.text();
     console.log('[remoteSave] Response:', text.slice(0, 200));
+    // GASレスポンスの中身も確認（{ ok: false } はエラー扱い）
+    try {
+      const json = JSON.parse(text);
+      if (json && json.ok === false) {
+        console.warn('[remoteSave] GAS returned ok:false', json.error || '');
+        setSyncDot('err');
+        return false;
+      }
+    } catch (_) { /* JSON以外のレスポンスは正常とみなす */ }
     setSyncDot('ok');
     return true;
   } catch (e) {
@@ -1051,25 +1127,53 @@ async function remoteSave(data) {
 // ── 送信: GASの全ユーザーを保護しつつ現在ユーザーのみ上書き ──
 async function pushToRemote() {
   if (!getGasUrl()) return false;
+  setSyncDot('syncing');
   const d = saveUserDataToCache();
   setGroupCache(d);
   const curUid = getCurrentUserId();
   const curUser = d.users.find(u => u.id === curUid);
   const g = getCurrentGroup();
+  const localDeletedIds = new Set((d.deletedUsers || []).map(u => u.id));
 
-  // まずGASから最新の全ユーザーを取得し、現在ユーザーだけ差し替える
+  // まずGASから最新の全ユーザーを取得する（他ユーザーを保護するため）
   const remote = await remoteLoad();
-  const remoteUsers = (remote && remote.users) ? remote.users.slice() : [];
-  if (curUser) {
+
+  if (remote === null) {
+    // GASが空またはネットワークエラー。
+    // ローカルに（削除済みを除いた）アクティブユーザーが複数いる場合も、
+    // 自分のデータのみで初回書き込みを許可する（他ユーザーはまだGASにいない）。
+    const payload = {
+      users: curUser ? [{ ...curUser }] : [],
+      deletedUsers: d.deletedUsers || [],
+      groupName: g ? g.name : '',
+      _senderId: curUid,
+      _sentAt: Date.now()
+    };
+    const ok = await remoteSave(payload);
+    updateGasSyncInfo(ok);
+    if (!ok) console.warn('[pushToRemote] GAS初回書き込み失敗');
+    return ok;
+  }
+
+  // GASの全ユーザーリストをベースに、現在ユーザーだけ差し替える
+  // ただし deletedUsers に含まれるユーザーはリモートからも除外する
+  const remoteDeletedIds = new Set((remote.deletedUsers || []).map(u => u.id));
+  const allDeletedIds = new Set([...localDeletedIds, ...remoteDeletedIds]);
+
+  let remoteUsers = (remote.users ? remote.users.slice() : [])
+    .filter(u => !allDeletedIds.has(u.id)); // 削除済みユーザーをリモートからも除去
+
+  if (curUser && !allDeletedIds.has(curUid)) {
     const idx = remoteUsers.findIndex(u => u.id === curUid);
     if (idx >= 0) remoteUsers[idx] = curUser;
     else remoteUsers.push(curUser);
   }
 
-  // deletedUsers はローカルとリモートをマージ
-  const remoteDeleted = (remote && remote.deletedUsers) ? remote.deletedUsers : [];
-  const mergedDeleted = remoteDeleted.slice();
-  (d.deletedUsers || []).forEach(lu => { if (!mergedDeleted.find(u => u.id === lu.id)) mergedDeleted.push(lu); });
+  // deletedUsers はローカルとリモートをマージ（両方を保持）
+  const mergedDeleted = (remote.deletedUsers || []).slice();
+  (d.deletedUsers || []).forEach(lu => {
+    if (!mergedDeleted.find(u => u.id === lu.id)) mergedDeleted.push(lu);
+  });
 
   const payload = {
     users: remoteUsers,
@@ -1089,36 +1193,64 @@ async function syncFromRemote(silent = false) {
   if (!silent) setSyncDot('syncing');
   try {
     const remote = await remoteLoad();
-    if (!remote) { if (!silent) setSyncDot('err'); if (!silent) showSnack('❌ 受信失敗。受信テストで確認してください。'); updateGasSyncInfo(false); return; }
+    if (!remote) {
+      if (!silent) setSyncDot('err');
+      if (!silent) showSnack('❌ 受信失敗。受信テストで確認してください。');
+      updateGasSyncInfo(false);
+      return;
+    }
 
     const local = getGroupCache();
     const curUid = getCurrentUserId();
-    const merged = { ...local };
 
-    // GASから現在タブのユーザーデータを探してマージ
-    const remoteUser = (remote.users || []).find(u => u.id === curUid);
-    if (remoteUser) {
-      const localUsers = (merged.users || []).slice();
-      const idx = localUsers.findIndex(u => u.id === curUid);
-      if (idx >= 0) {
-        // ローカルユーザーにリモートデータをマージ（リモート優先）
-        localUsers[idx] = { ...localUsers[idx], ...remoteUser };
-      } else {
-        localUsers.push(remoteUser);
-      }
-      merged.users = localUsers;
+    // GASから現在ユーザーのデータを探す（削除済みユーザーは無視）
+    const allDeletedIds = new Set([
+      ...(remote.deletedUsers || []).map(u => u.id),
+      ...(local.deletedUsers || []).map(u => u.id)
+    ]);
+    const remoteUser = (remote.users || []).find(u => u.id === curUid && !allDeletedIds.has(u.id));
+
+    if (!remoteUser) {
+      // GASに自分のデータがない → ローカルは変更しない
+      if (!silent) setSyncDot('ok');
+      if (!silent) showSnack('⚠️ GASに自分のデータがありません（ローカルは変更しません）');
+      updateGasSyncInfo(true);
+      return;
     }
-    // deletedUsers はローカルとリモートをマージ（両方を保持）
-    const remoteDeleted = remote.deletedUsers || [];
-    const localDeleted = (merged.deletedUsers || []).slice();
-    remoteDeleted.forEach(ru => { if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru); });
-    merged.deletedUsers = localDeleted;
+
+    // 現在ユーザーのデータのみをローカルに反映（他ユーザーのローカルデータは触らない）
+    const localUsers = (local.users || []).slice();
+    const idx = localUsers.findIndex(u => u.id === curUid);
+    if (idx >= 0) {
+      // リモート優先でマージ
+      localUsers[idx] = { ...localUsers[idx], ...remoteUser };
+    } else {
+      localUsers.push(remoteUser);
+    }
+
+    // deletedUsers: リモートにあってローカルにない項目のみ追加（逆方向は追加しない）
+    // → 古いdeleted項目がリモートから復活しないよう、現在ユーザーのdeleted項目のみ受け取る
+    const remoteDeleted = (remote.deletedUsers || []).filter(ru => ru.userId === curUid || !ru.userId);
+    const localDeleted = (local.deletedUsers || []).slice();
+    remoteDeleted.forEach(ru => {
+      if (!localDeleted.find(u => u.id === ru.id)) localDeleted.push(ru);
+    });
+
+    const merged = {
+      ...local,
+      users: localUsers,
+      deletedUsers: localDeleted
+    };
 
     // グループ名をリモートから反映
     if (remote.groupName) {
-      const groups = loadGroups(); const gid = getCurrentGroupId();
+      const groups = loadGroups();
+      const gid = getCurrentGroupId();
       const g = groups.find(g => g.id === gid);
-      if (g && g.gasUrl && remote.groupName !== g.name) { g.name = remote.groupName; saveGroups(groups); }
+      if (g && g.gasUrl && remote.groupName !== g.name) {
+        g.name = remote.groupName;
+        saveGroups(groups);
+      }
     }
 
     setGroupCache(merged);
@@ -1127,7 +1259,7 @@ async function syncFromRemote(silent = false) {
     loadUserData();
     fullRefreshUI();
     if (!silent) setSyncDot('ok');
-    if (!silent) showSnack(remoteUser ? '✅ 受信しました（現在のユーザー）' : '⚠️ GASに自分のデータがありません');
+    if (!silent) showSnack('✅ 受信しました（現在のユーザー）');
     updateGasSyncInfo(true);
 
   } catch(err) {
@@ -1304,16 +1436,35 @@ function showGasScriptTemplate() {
 const SHEET_NAME = 'SmartAlarm';
 
 function doGet(e) {
-  const data = readData();
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const data = readData();
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ users: [], deletedUsers: [], error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function doPost(e) {
+  // 排他ロック（同時書き込みを防ぐ）
+  const lock = LockService.getScriptLock();
   try {
-    const data = JSON.parse(e.postData.contents);
-    writeData(data);
+    lock.waitLock(10000); // 最大10秒待機
+  } catch(e) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: 'ロック取得タイムアウト' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  try {
+    const incoming = JSON.parse(e.postData.contents);
+    // 書き込むデータのバリデーション
+    if (!incoming || !Array.isArray(incoming.users)) {
+      throw new Error('不正なデータ形式: usersが配列ではありません');
+    }
+    writeData(incoming);
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1321,6 +1472,8 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ ok: false, error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -1328,12 +1481,21 @@ function readData() {
   const sheet = getSheet();
   const val = sheet.getRange('A1').getValue();
   if (!val) return { users: [], deletedUsers: [] };
-  try { return JSON.parse(val); } catch { return { users: [], deletedUsers: [] }; }
+  try {
+    const data = JSON.parse(val);
+    if (!data.users) data.users = [];
+    if (!data.deletedUsers) data.deletedUsers = [];
+    return data;
+  } catch {
+    return { users: [], deletedUsers: [] };
+  }
 }
 
 function writeData(data) {
   const sheet = getSheet();
   sheet.getRange('A1').setValue(JSON.stringify(data));
+  // バックアップ: B1に最終更新日時を記録
+  sheet.getRange('B1').setValue(new Date().toISOString());
 }
 
 function getSheet() {
@@ -1353,7 +1515,11 @@ async function headerPushToRemote() {
   showSnack('送信中（上書き）…');
   const ok = await pushToRemote();
   if (btn) btn.disabled = false;
-  showSnack(ok ? '✅ GASへ送信完了（上書き）' : '❌ 送信に失敗しました');
+  if (!ok) {
+    showSnack('❌ 送信失敗（GAS読み込みエラーまたはネットワーク問題）');
+  } else {
+    showSnack('✅ GASへ送信完了（現在ユーザーのみ上書き）');
+  }
 }
 
 async function headerSyncFromRemote() {
@@ -1695,7 +1861,7 @@ function renderAlarms() {
               <div class="sw-track"></div>
               <div class="sw-thumb"></div>
             </label>
-            <button class="icon-btn edit" onclick="openModal('${a.id}')">✎</button>
+            <button class="icon-btn edit" onclick="openModal('${a.id}')">✏️</button>
             <button class="alarm-hover-del" onclick="trashAlarm('${a.id}')" title="削除（ゴミ箱へ）">✕</button>
           </div>
       </div>`;
@@ -1726,6 +1892,8 @@ function renderAlarms() {
 
   el.innerHTML = html;
   activeAlarms.forEach(a => initSwipeDelete(a.id));
+  // ロック状態を再適用
+  el.classList.toggle('alarm-edit-locked', alarmLocked);
 }
 
 function initSwipeDelete(id) {
@@ -1752,6 +1920,7 @@ function initSwipeDelete(id) {
 
   card.addEventListener('touchend', () => {
     swiping = false;
+    if (alarmLocked) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (-curX >= THRESHOLD) {
       card.style.transform = `translateX(-100%)`;
       card.style.transition = 'transform .25s ease';
@@ -1803,6 +1972,8 @@ function purgeAllAlarms() {
 // MODAL OPEN / CLOSE
 // ───────────────────────────────────────────
 function openModal(id = null) {
+  // 編集の場合はロックチェック、追加は許可
+  if (id && alarmLocked) { showSnack('🔒 ロック中です。解除してから編集してください'); return; }
   document.getElementById('edit-id').value = id || '';
   document.getElementById('sheet-title').textContent = id ? 'アラームを編集' : 'アラームを追加';
   document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('sel'));
@@ -2376,10 +2547,16 @@ async function syncAllUsersFromRemote() {
 
     const local = getGroupCache();
     const merged = { ...local };
-    const localUsers = (merged.users || []).slice();
 
-    // GASの全ユーザーをローカルにマージ（リモート優先、IDが一致すれば上書き、新規なら追加）
-    (remote.users || []).forEach(remoteUser => {
+    // 削除済みIDセット（ローカル＋リモートをまとめて）
+    const remoteDeletedIds = new Set((remote.deletedUsers || []).map(u => u.id));
+    const localDeletedIds = new Set((merged.deletedUsers || []).map(u => u.id));
+    const allDeletedIds = new Set([...remoteDeletedIds, ...localDeletedIds]);
+
+    const localUsers = (merged.users || []).filter(u => !allDeletedIds.has(u.id));
+
+    // GASの全ユーザーをローカルにマージ（リモート優先、削除済みは除外）
+    (remote.users || []).filter(u => !allDeletedIds.has(u.id)).forEach(remoteUser => {
       const idx = localUsers.findIndex(u => u.id === remoteUser.id);
       if (idx >= 0) {
         localUsers[idx] = { ...localUsers[idx], ...remoteUser };
@@ -2710,25 +2887,131 @@ function saveGroupGasUrl() {
 function renderTimerList() {
   const el = document.getElementById('timer-card-list');
   if (!el) return;
-  if (!timerPresets.length) {
+
+  const activePresets = timerPresets.filter(p => !p._trashed);
+  const trashedPresets = timerPresets.filter(p => p._trashed);
+
+  if (!activePresets.length && !trashedPresets.length) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">⏱️</div>タイマーがありません<br>下の「タイマーを追加」から作成してください</div>`;
     return;
   }
-  el.innerHTML = timerPresets.map(p => {
+
+  let html = activePresets.map(p => {
     const totalSec = (p.phases || []).reduce((s, ph) => s + ph.sec, 0);
     const steps = (p.phases || []).length;
-    return `<div class="timer-list-card" onclick="openTimerDetail('${p.id}')">
-      <div class="timer-list-card-info">
-        <div class="timer-list-card-name">${esc(p.name)}</div>
-        <div class="timer-list-card-sub">${steps}ステップ・合計${fmtSec(totalSec)}</div>
+    return `<div class="timer-swipe-wrap" id="tswipe-${p.id}">
+      <div class="timer-swipe-del" id="tdel-${p.id}">削除</div>
+      <div class="timer-list-card" id="tcard-${p.id}" onclick="openTimerDetail('${p.id}')" style="margin-bottom:0;">
+        <div class="timer-list-card-info">
+          <div class="timer-list-card-name">${esc(p.name || '（名前未設定）')}</div>
+          <div class="timer-list-card-sub">${steps}ステップ・合計${fmtSec(totalSec)}</div>
+        </div>
+        <div class="timer-list-actions" onclick="event.stopPropagation()">
+          <button class="icon-btn" style="font-size:14px;" onclick="openTimerCopyModal('${p.id}')" title="別ユーザー・グループにコピー">📋</button>
+          <button class="timer-hover-del" onclick="trashTimerPreset('${p.id}')" title="削除（ゴミ箱へ）">✕</button>
+        </div>
+        <div class="timer-list-card-arrow">›</div>
       </div>
-      <div class="timer-list-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn" style="font-size:14px;" onclick="openTimerCopyModal('${p.id}')" title="別ユーザー・グループにコピー">📋</button>
-        <button class="icon-btn del" onclick="deleteTimerPreset('${p.id}')">✕</button>
-      </div>
-      <div class="timer-list-card-arrow">›</div>
     </div>`;
   }).join('');
+
+  // ゴミ箱セクション
+  if (trashedPresets.length) {
+    html += `<div class="trash-section">
+      <div class="trash-section-label">🗑 ゴミ箱（${trashedPresets.length}件）
+        <button onclick="purgeAllTimerPresets()" title="すべて完全削除">すべて削除</button>
+      </div>`;
+    html += trashedPresets.map(p => {
+      const steps = (p.phases || []).length;
+      return `<div class="trash-bar">
+        <div class="trash-bar-info">
+          <div class="trash-bar-time" style="font-size:16px;">${esc(p.name || '（名前未設定）')}</div>
+          <div class="trash-bar-label">${steps}ステップ</div>
+        </div>
+        <div class="trash-bar-actions">
+          <button class="trash-restore-btn" onclick="restoreTimerPreset('${p.id}')">復元</button>
+          <button class="trash-purge-btn" onclick="purgeTimerPreset('${p.id}')">完全削除</button>
+        </div>
+      </div>`;
+    }).join('');
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+  activePresets.forEach(p => initTimerSwipeDelete(p.id));
+  // ロック状態を再適用
+  el.classList.toggle('timer-edit-locked', timerLocked);
+  const addBtn = document.querySelector('#timer-list-view .btn-add-phase');
+  if (addBtn) { addBtn.style.pointerEvents = timerLocked ? 'none' : ''; addBtn.style.opacity = timerLocked ? '.4' : ''; }
+}
+
+function initTimerSwipeDelete(id) {
+  const card = document.getElementById('tcard-' + id);
+  const delEl = document.getElementById('tdel-' + id);
+  if (!card || !delEl) return;
+  let startX = 0, curX = 0, swiping = false;
+  const THRESHOLD = 80;
+
+  card.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    curX = 0; swiping = true;
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    if (!swiping) return;
+    const dx = e.touches[0].clientX - startX;
+    if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    curX = Math.max(dx, -THRESHOLD - 20);
+    card.style.transform = `translateX(${curX}px)`;
+    delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => {
+    swiping = false;
+    if (timerLocked) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (-curX >= THRESHOLD) {
+      card.style.transform = `translateX(-100%)`;
+      card.style.transition = 'transform .25s ease';
+      setTimeout(() => trashTimerPreset(id), 250);
+    } else {
+      card.style.transform = '';
+      delEl.classList.remove('visible');
+    }
+  });
+}
+
+function trashTimerPreset(id) {
+  const p = timerPresets.find(x => x.id === id);
+  if (!p) return;
+  p._trashed = true;
+  if (currentTimerPresetId === id) { currentTimerPresetId = null; timerPhases = []; }
+  saveData(); renderTimerList();
+  showSnack('ゴミ箱に移動しました（タイマー一覧から復元できます）');
+}
+
+function restoreTimerPreset(id) {
+  const p = timerPresets.find(x => x.id === id);
+  if (!p) return;
+  delete p._trashed;
+  saveData(); renderTimerList();
+  showSnack('復元しました');
+}
+
+function purgeTimerPreset(id) {
+  if (!confirm('このタイマーを完全に削除しますか？元に戻せません。')) return;
+  timerPresets = timerPresets.filter(p => p.id !== id);
+  if (currentTimerPresetId === id) { currentTimerPresetId = null; timerPhases = []; }
+  saveData(); renderTimerList();
+  showSnack('完全に削除しました');
+}
+
+function purgeAllTimerPresets() {
+  const n = timerPresets.filter(p => p._trashed).length;
+  if (!n) return;
+  if (!confirm(`ゴミ箱内の${n}件のタイマーを完全に削除しますか？元に戻せません。`)) return;
+  timerPresets = timerPresets.filter(p => !p._trashed);
+  saveData(); renderTimerList();
+  showSnack('ゴミ箱を空にしました');
 }
 
 function addTimerPreset() {
@@ -2887,22 +3170,16 @@ async function executeTimerCopy() {
 }
 
 function deleteTimerPreset(id) {
-  if (!confirm('このタイマーを削除しますか？')) return;
-  timerPresets = timerPresets.filter(p => p.id !== id);
-  if (currentTimerPresetId === id) {
-    currentTimerPresetId = null;
-    timerPhases = [];
-  }
-  saveData();
-  renderTimerList();
+  trashTimerPreset(id);
 }
 
 function openTimerDetail(id) {
+  if (timerLocked) { showSnack('🔒 ロック中です。解除してから開いてください'); return; }
   // タイマー実行中なら止める
   if (timerState !== 'idle') timerReset();
 
   currentTimerPresetId = id;
-  const preset = timerPresets.find(p => p.id === id);
+  const preset = timerPresets.find(p => p.id === id && !p._trashed);
   if (!preset) return;
   timerPhases = JSON.parse(JSON.stringify(preset.phases || []));
   selectedPhaseIdx = -1;
@@ -2916,6 +3193,10 @@ function openTimerDetail(id) {
   }
   document.getElementById('timer-list-view').style.display = 'none';
   document.getElementById('timer-detail-view').style.display = '';
+  // フェーズロックをリセット
+  phaseLocked = false;
+  const plBtn = document.getElementById('phase-lock-btn');
+  if (plBtn) { plBtn.textContent = '🔓'; plBtn.classList.remove('locked'); }
   renderPhaseList();
   timerUpdateDisplay();
 }
@@ -3011,6 +3292,9 @@ function renderPhaseList() {
   el.innerHTML = undoHtml + phasesHtml;
   updateMovePanel();
   initPhaseSwipe();
+  // ロック状態を再適用
+  const wrap = document.querySelector('.phase-list-wrap');
+  if (wrap) wrap.classList.toggle('edit-locked', phaseLocked);
 }
 
 function selectPhase(i) {
@@ -3276,6 +3560,7 @@ function initPhaseSwipe() {
 
     inner.addEventListener('touchend', () => {
       swiping = false;
+      if (phaseLocked) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
       if (-curX >= THRESHOLD) {
         inner.style.transform = `translateX(-100%)`;
         inner.style.transition = 'transform .25s ease';
