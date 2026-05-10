@@ -1003,6 +1003,11 @@ let selAlarmId = null;
 let firingAlarm = null, firingAudio = null, firingCtx = null;
 let loopTimer = null;
 let lastCheckedMin = -1;
+let alarmSoundType = null;
+let alarmLoopGeneration = 0;
+let alarmAudioCtx = null;
+let alarmAudioUnlocked = false;
+let alarmUnlockBound = false;
 let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
 let musicStore = {};
 
@@ -1350,6 +1355,60 @@ function loadUserData() {
 }
 
 // ───────────────────────────────────────────
+// ALARM AUDIO
+// ───────────────────────────────────────────
+function ensureAlarmAudioCtx() {
+  try {
+    if (!alarmAudioCtx || alarmAudioCtx.state === 'closed') {
+      alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    firingCtx = alarmAudioCtx;
+    return alarmAudioCtx;
+  } catch (e) {
+    console.warn('[alarm] AudioContext init failed:', e);
+    return null;
+  }
+}
+
+function unlockAlarmAudio() {
+  const ctx = ensureAlarmAudioCtx();
+  if (!ctx) return Promise.resolve(false);
+  const finalize = () => {
+    try {
+      const src = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      src.buffer = ctx.createBuffer(1, 1, 22050);
+      gain.gain.value = 0.00001;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(0);
+    } catch (e) {}
+    alarmAudioUnlocked = true;
+    return true;
+  };
+  if (ctx.state === 'suspended') {
+    return ctx.resume().then(finalize).catch(err => {
+      console.warn('[alarm] resume failed:', err);
+      return false;
+    });
+  }
+  finalize();
+  return Promise.resolve(true);
+}
+
+function initAlarmAudio() {
+  if (alarmUnlockBound) return;
+  alarmUnlockBound = true;
+  const onceUnlock = () => { unlockAlarmAudio(); };
+  ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(type => {
+    document.addEventListener(type, onceUnlock, { passive: true });
+  });
+  window.addEventListener('pageshow', () => {
+    if (firingAlarm) unlockAlarmAudio();
+  });
+}
+
+// ───────────────────────────────────────────
 // INIT
 // ───────────────────────────────────────────
 function init() {
@@ -1377,11 +1436,19 @@ function init() {
   renderCalendar();
   updateHolidayStatus();
   startClock();
+  initAlarmAudio();
   setInterval(checkAlarms, 1000);
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') checkAlarms();
+    if (document.visibilityState === 'visible') {
+      checkAlarms();
+      if (firingAlarm) {
+        unlockAlarmAudio().then(ok => {
+          if (ok && !loopTimer && !firingAudio) startAlarmSound(firingAlarm);
+        });
+      }
+    }
   });
   renderTimerList();
   renderGroupName();
@@ -1405,6 +1472,20 @@ function init() {
   if ('speechSynthesis' in window) {
     populateVoiceSelect();
     window.speechSynthesis.onvoiceschanged = populateVoiceSelect;
+  }
+  const stopBtn = document.getElementById('btn-stop');
+  if (stopBtn && !stopBtn.dataset.boundStop) {
+    stopBtn.dataset.boundStop = '1';
+    const stopNow = ev => {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      handleStopTap();
+    };
+    stopBtn.addEventListener('click', stopNow, { passive: false });
+    stopBtn.addEventListener('pointerup', stopNow, { passive: false });
+    stopBtn.addEventListener('touchend', stopNow, { passive: false });
   }
 }
 
@@ -2381,115 +2462,75 @@ function getFreshMusicData(alarmId) {
   return store[alarmId]?.data || null;
 }
 
-// ── アラーム音再生（新規設計）──
-// 毎回新しい AudioContext を作り resume() してから鳴らす。
-// 停止は close() で確実に行う。sharedAudioCtx は使わない。
+function scheduleNextAlarmBurst(gen) {
+  if (loopTimer) clearTimeout(loopTimer);
+  loopTimer = setTimeout(() => {
+    if (gen !== alarmLoopGeneration || !firingAlarm) return;
+    const ctx = ensureAlarmAudioCtx();
+    if (!ctx) return;
+    const play = () => {
+      if (gen !== alarmLoopGeneration || !firingAlarm) return;
+      playTones(ctx, alarmSoundType || 'beep', 1);
+      scheduleNextAlarmBurst(gen);
+    };
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(play).catch(err => {
+        console.warn('[alarm] resume retry failed:', err);
+        scheduleNextAlarmBurst(gen);
+      });
+    } else {
+      play();
+    }
+  }, 1400);
+}
 
 function startAlarmSound(a) {
-  stopAlarmSound();
+  stopAlarmSound(false);
   const hint = document.getElementById('firing-music-hint');
   if (hint) hint.style.display = 'none';
-
-  // 音楽ファイルの場合はSTOPタップ時に再生（自動再生ポリシー回避）
-  if (a.sound === 'music' && getFreshMusicData(a.id)) {
-    if (hint) hint.style.display = '';
-    _pendingMusicAlarm = a;
-  } else {
-    _pendingMusicAlarm = null;
-  }
-
-  // ビープ/やさしい音/緊急音：毎回新規 AudioContext を作り resume() してから再生
   alarmSoundType = a.sound || 'beep';
-  try {
-    firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-    firingCtx.resume().then(() => {
-      if (firingCtx) playAlarmPattern();
-    }).catch(() => {
-      // resume 拒否時はそのまま試みる（Android 一部機種）
-      if (firingCtx) playAlarmPattern();
-    });
-  } catch (e) { console.warn('[alarm] ctx error:', e); }
-}
 
-function playAlarmPattern() {
-  if (!firingCtx || !firingAlarm) return;
-  const ctx = firingCtx;
-  const type = alarmSoundType || 'beep';
-
-  function schedule(freqs, duration, gap, repeat) {
-    let t = ctx.currentTime;
-    for (let r = 0; r < repeat; r++) {
-      for (const f of freqs) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = f;
-        osc.type = (type === 'urgent') ? 'sawtooth' : 'sine';
-        gain.gain.setValueAtTime(0.4, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-        osc.start(t); osc.stop(t + duration);
-        t += duration + gap;
-      }
-      t += 0.3;
-    }
-    return t;
+  if (alarmSoundType === 'music') {
+    return;
   }
 
-  const patterns = {
-    beep:   () => schedule([880, 880],              0.2,  0.1,  20),
-    gentle: () => schedule([523, 659, 784],         0.3,  0.15, 15),
-    urgent: () => schedule([1200, 1000, 1200, 800], 0.15, 0.05, 30),
+  const ctx = ensureAlarmAudioCtx();
+  if (!ctx) return;
+  const gen = ++alarmLoopGeneration;
+  const startBurst = () => {
+    if (gen !== alarmLoopGeneration || !firingAlarm) return;
+    playTones(ctx, alarmSoundType, 1);
+    scheduleNextAlarmBurst(gen);
   };
 
-  const endTime = (patterns[type] || patterns.beep)();
-  const delay = Math.max(100, (endTime - ctx.currentTime) * 1000);
-  loopTimer = setTimeout(() => {
-    if (firingCtx && firingAlarm) {
-      // ループのたびに ctx を作り直して確実に鳴らす
-      try { firingCtx.close(); } catch(ex) {}
-      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-      firingCtx.resume().then(() => {
-        if (firingCtx && firingAlarm) playAlarmPattern();
-      }).catch(() => {
-        if (firingCtx && firingAlarm) playAlarmPattern();
-      });
-    }
-  }, delay);
-}
-
-let _pendingMusicAlarm = null;
-
-// STOPボタン
-function handleStopTap() {
-  if (_pendingMusicAlarm) {
-    const a = _pendingMusicAlarm;
-    _pendingMusicAlarm = null;
-    stopAlarmSound();
-    const data = getFreshMusicData(a.id);
-    if (data) {
-      const hint = document.getElementById('firing-music-hint');
-      if (hint) hint.style.display = 'none';
-      firingAudio = new Audio(data);
-      firingAudio.loop = true;
-      firingAudio.play().catch(() => stopAlarm());
-    } else {
-      stopAlarm();
-    }
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => {
+      alarmAudioUnlocked = true;
+      startBurst();
+    }).catch(err => {
+      console.warn('[alarm] initial resume failed:', err);
+      showSnack('音声を有効にするため、画面を一度タップしてください');
+    });
   } else {
-    stopAlarm();
+    alarmAudioUnlocked = true;
+    startBurst();
   }
 }
 
-function stopAlarmSound() {
+function handleStopTap() {
+  stopAlarm();
+}
+
+function stopAlarmSound(resetType = true) {
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch(e) {} firingAudio = null; }
-  if (firingCtx) { try { firingCtx.close(); } catch(e) {} firingCtx = null; }
-  alarmSoundType = null;
+  alarmLoopGeneration++;
+  if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
+  if (navigator.vibrate) navigator.vibrate(0);
+  if (resetType) alarmSoundType = null;
 }
 
 function stopAlarm() {
   stopAlarmSound();
-  _pendingMusicAlarm = null;
   const hint = document.getElementById('firing-music-hint');
   if (hint) hint.style.display = 'none';
   document.getElementById('firing-overlay').classList.remove('open');
@@ -3941,5 +3982,6 @@ function updateThemeUI(mode) {
 
 init();
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
