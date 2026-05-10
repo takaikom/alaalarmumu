@@ -308,11 +308,11 @@ select.form-input{-webkit-appearance:none;background-image:url("data:image/svg+x
 select.form-input option{background:var(--surface2);color:var(--text);}
 
 /* FIRING */
-#firing-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-#firing-overlay.open{display:flex;}
+#firing-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;-webkit-tap-highlight-color:transparent;}
+#firing-overlay.open{display:flex;pointer-events:auto;}
 .firing-time{font-family:var(--mono);font-size:80px;font-weight:400;color:var(--accent);line-height:1;}
 .firing-label{font-size:18px;color:var(--text2);}
-.btn-stop{margin-top:20px;padding:20px 72px;border-radius:14px;border:none;background:var(--red);color:#fff;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;animation:breathe 1.4s ease-in-out infinite;}
+.btn-stop{margin-top:20px;padding:20px 72px;border-radius:14px;border:none;background:var(--red);color:#fff;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;animation:breathe 1.4s ease-in-out infinite;position:relative;z-index:501;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 @keyframes breathe{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
 .btn-snooze{padding:12px 40px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer;}
 
@@ -691,8 +691,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
             <div class="time-spinners">
               <div class="time-spin-unit">
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00">
-                </div>
+                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00" inputmode="numeric" enterkeyhint="next">
                 <div class="time-spin-col">
                   <button class="time-spin-btn" onclick="spinTime('h',1)">▲</button>
                   <button class="time-spin-btn" onclick="spinTime('h',-1)">▼</button>
@@ -701,8 +700,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
               <span class="time-colon">:</span>
               <div class="time-spin-unit">
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00">
-                </div>
+                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00" inputmode="numeric" enterkeyhint="done">
                 <div class="time-spin-col">
                   <button class="time-spin-btn" onclick="spinTime('m',1)">▲</button>
                   <button class="time-spin-btn" onclick="spinTime('m',-1)">▼</button>
@@ -994,7 +992,40 @@ let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
 let musicStore = {};
 
 let previewCtx = null, previewTimer = null;
-let currentTimerPresetId = null;
+// ── AudioContext アンロック（iOS/Android autoplay 対策） ──
+let _sharedAudioCtx = null;
+
+function _getSharedAudioCtx() {
+  if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+    _sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_sharedAudioCtx.state === 'suspended') {
+    _sharedAudioCtx.resume().catch(() => {});
+  }
+  return _sharedAudioCtx;
+}
+
+function _unlockAudioCtx() {
+  // タップ・クリック・キー操作の最初の1回で AudioContext を resume する
+  const unlock = () => {
+    _getSharedAudioCtx();
+    // 無音バッファを再生して確実にアンロック
+    try {
+      const ctx = _sharedAudioCtx;
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (e) {}
+    document.removeEventListener('touchstart', unlock, true);
+    document.removeEventListener('mousedown', unlock, true);
+    document.removeEventListener('keydown', unlock, true);
+  };
+  document.addEventListener('touchstart', unlock, true);
+  document.addEventListener('mousedown', unlock, true);
+  document.addEventListener('keydown', unlock, true);
+}let currentTimerPresetId = null;
 let timerPhases = [];
 let timerState = 'idle';
 let timerPhaseIdx = 0;
@@ -1376,8 +1407,17 @@ function init() {
   tm.addEventListener('focus', function() { this.select(); });
   th.addEventListener('input', function() { clampNum(this, 0, 23); });
   tm.addEventListener('input', function() { clampNum(this, 0, 59); });
+  th.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === 'Next') { e.preventDefault(); tm.focus(); tm.select(); }
+  });
+  tm.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === 'Next') { e.preventDefault(); this.blur(); }
+  });
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
+  // AudioContext 事前アンロック
+  // ユーザーの最初のタップ時に AudioContext を resume 済み状態にしておく
+  _unlockAudioCtx();
 }
 
 function renderGroupName() {
@@ -2371,10 +2411,11 @@ function startAlarmSound(a) {
     _pendingMusicAlarm = null;
     if (hint) hint.style.display = 'none';
     try {
-      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (firingCtx.state === 'suspended') firingCtx.resume();
-      loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
-      playTones(firingCtx, a.sound || 'beep', 1);
+      firingCtx = _getSharedAudioCtx();
+      firingCtx.resume().then(() => {
+        loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
+        playTones(firingCtx, a.sound || 'beep', 1);
+      }).catch(() => {});
     } catch (e) {}
   }
 }
@@ -2424,7 +2465,8 @@ function handleStopTap() {
 function stopAlarmSound() {
   clearInterval(loopTimer); loopTimer = null;
   if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
-  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
+  // 共有コンテキストは close せず参照だけクリア（再利用するため）
+  firingCtx = null;
 }
 
 function stopAlarm() {
@@ -3286,18 +3328,21 @@ function renderPhaseList() {
       <div class="phase-swipe-del" id="psdel-${i}">削除</div>
       <div class="phase-item-inner" id="phase-inner-${i}" style="display:flex;flex-direction:column;">
         <div class="phase-item-top">
-          <span class="phase-num">${i + 1}.</span>
-          <input class="phase-announce-inline" value="${esc(p.announce || '')}"
-            placeholder="アナウンス（例: 前歯を磨きます）"
-            onclick="event.stopPropagation();"
-            oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();">
-          <div class="phase-interval-wrap">
-            <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
+            <span class="phase-num">${i + 1}.</span>
+            <input class="phase-announce-inline" value="${esc(p.announce || '')}"
+              placeholder="アナウンス（例: 前歯を磨きます）"
+              enterkeyhint="next"
               onclick="event.stopPropagation();"
-              onfocus="if(!this._clearing){this._clearing=true;this.select();}"
-              onblur="this._clearing=false;timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();renderPhaseList();"
-              oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();">
-            <div class="phase-sec-spin-col">
+              oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();"
+              onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.closest('.phase-item-top').querySelector('.phase-sec-input').focus();}">
+            <div class="phase-interval-wrap">
+              <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
+                inputmode="numeric" enterkeyhint="done"
+                onclick="event.stopPropagation();"
+                onfocus="if(!this._clearing){this._clearing=true;this.select();}"
+                onblur="this._clearing=false;timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();renderPhaseList();"
+                oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();"
+                onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.blur();}">            <div class="phase-sec-spin-col">
               <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},1)">▲</button>
               <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},-1)">▼</button>
             </div>
@@ -3688,12 +3733,24 @@ function speak(text) {
   if (!document.getElementById('announce-speech')?.checked) return;
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'ja-JP'; utter.rate = 0.95; utter.pitch = 1.1;
-  const voices = window.speechSynthesis.getVoices();
-  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
-  if (jaVoice) utter.voice = jaVoice;
-  window.speechSynthesis.speak(utter);
+  const _doSpeak = () => {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ja-JP'; utter.rate = 0.95; utter.pitch = 1.1;
+    const voices = window.speechSynthesis.getVoices();
+    const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+    if (jaVoice) utter.voice = jaVoice;
+    window.speechSynthesis.speak(utter);
+  };
+  // Android Chrome: cancel() 直後に speak() すると無音になるバグ対策（50ms待機）
+  // voices が空の場合は onvoiceschanged を待つ
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.onvoiceschanged = null;
+      setTimeout(_doSpeak, 50);
+    };
+  } else {
+    setTimeout(_doSpeak, 50);
+  }
 }
 
 function playBeep(type = 'phase') {
