@@ -1376,9 +1376,13 @@ function init() {
   renderCalendar();
   updateHolidayStatus();
   startClock();
-  setInterval(checkAlarms, 5000);
+  setInterval(checkAlarms, 1000);
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
+  // 画面復帰時（スリープ解除・タブ切り替え後）に即アラームチェック
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkAlarms();
+  });
   renderTimerList();
   renderGroupName();
   renderUserTabsWrap();
@@ -2354,7 +2358,7 @@ function fireAlarm(a) {
   const card = document.getElementById('acard-' + a.id);
   if (card) card.classList.add('firing');
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), silent: true });
+    new Notification('⏰ SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), requireInteraction: true, vibrate: [300, 100, 300] });
   }
   startAlarmSound(a);
 }
@@ -2370,7 +2374,7 @@ function getFreshMusicData(alarmId) {
   return store[alarmId]?.data || null;
 }
 
-function startAlarmSound(a) {
+async function startAlarmSound(a) {
   stopAlarmSound();
   const hint = document.getElementById('firing-music-hint');
 
@@ -2379,11 +2383,11 @@ function startAlarmSound(a) {
     // Step1: まずビープで鳴らす（autoplay制限を回避するため）
     try {
       firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-      // AudioContextがsuspendedの場合はresumeを試みる
-      if (firingCtx.state === 'suspended') firingCtx.resume();
+      // AudioContextがsuspendedの場合はresumeを待つ
+      if (firingCtx.state === 'suspended') await firingCtx.resume();
       loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
       playTones(firingCtx, 'beep', 1);
-    } catch (e) {}
+    } catch (e) { console.warn('[startAlarmSound] beep error:', e); }
     // Step2: STOPボタンタップ時に音楽へ切り替えるフラグを立てる
     _pendingMusicAlarm = a;
     if (hint) hint.style.display = '';
@@ -2393,10 +2397,10 @@ function startAlarmSound(a) {
     if (hint) hint.style.display = 'none';
     try {
       firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (firingCtx.state === 'suspended') firingCtx.resume();
+      if (firingCtx.state === 'suspended') await firingCtx.resume();
       loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
       playTones(firingCtx, a.sound || 'beep', 1);
-    } catch (e) {}
+    } catch (e) { console.warn('[startAlarmSound] tone error:', e); }
   }
 }
 
@@ -2404,7 +2408,7 @@ function startAlarmSound(a) {
 let _pendingMusicAlarm = null;
 let _musicStarted = false;
 
-function handleStopTap() {
+async function handleStopTap() {
   const hint = document.getElementById('firing-music-hint');
   if (_pendingMusicAlarm && !_musicStarted) {
     // 1回目タップ：ユーザー操作コンテキストで音楽再生開始
@@ -2418,17 +2422,19 @@ function handleStopTap() {
         firingAudio = new Audio();
         firingAudio.loop = true;
         firingAudio.src = data;
-        firingAudio.play().catch(err => {
+        firingAudio.play().catch(async err => {
           // まだブロックされた場合はビープに戻す
           console.warn('[handleStopTap] play blocked:', err.message);
           firingAudio = null;
           firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (firingCtx.state === 'suspended') await firingCtx.resume();
           loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
           playTones(firingCtx, 'beep', 1);
           if (hint) hint.style.display = 'none';
         });
       } catch (e) {
         firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (firingCtx.state === 'suspended') await firingCtx.resume();
         loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
       }
       if (hint) hint.style.display = 'none';
@@ -2539,6 +2545,16 @@ function updateNextInfo() {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   el.innerHTML = `次: <strong>${next.time}</strong>（${h > 0 ? h + '時間' : ''}${m}分後）`;
+
+  // Service Worker に次のアラーム時刻を通知してバックグラウンド発火に備える
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SCHEDULE_ALARM',
+      fireAt: next.date.getTime(),
+      time: next.time,
+      label: next.label || ''
+    });
+  }
 }
 
 function calcNext() {
