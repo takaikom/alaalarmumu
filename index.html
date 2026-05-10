@@ -722,7 +722,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
               </div>
             </div>
             <button class="btn-mode-toggle" onclick="toggleTimeMode()">🕐 時計</button>
-            <button class="btn-mode-toggle" onclick="document.getElementById('t-h').blur();document.getElementById('t-m').blur();" title="確定">→</button>
+            <button class="btn-mode-toggle" onclick="document.getElementById('t-h').blur();document.getElementById('t-m').blur();">→ 確定</button>
           </div>
           <div class="time-hint">▲▼で調整、または入力欄をタップして直接入力（時: 0〜23、分: 0〜59）</div>
         </div>
@@ -1380,7 +1380,6 @@ function init() {
   setInterval(checkAlarms, 1000);
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
-  // 画面復帰（スリープ解除・タブ切替）時に即アラームチェック
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') checkAlarms();
   });
@@ -1397,12 +1396,9 @@ function init() {
   tm.addEventListener('focus', function() { this.select(); });
   th.addEventListener('input', function() { clampNum(this, 0, 23); });
   tm.addEventListener('input', function() { clampNum(this, 0, 59); });
-  // Enter キーまたは「→」ボタンで確定（フォーカスを外してキーボードを閉じる）
-  function commitTimeInput(e) {
-    if (e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'Go') { e.preventDefault(); this.blur(); }
-  }
-  th.addEventListener('keydown', commitTimeInput);
-  tm.addEventListener('keydown', commitTimeInput);
+  [th, tm].forEach(el => el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); this.blur(); }
+  }));
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
   // 音声リスト初期化（voiceschanged で再実行）
@@ -2077,14 +2073,6 @@ function closeModal() { document.getElementById('alarm-sheet').classList.remove(
 // SAVE / DELETE / TOGGLE ALARM
 // ───────────────────────────────────────────
 function saveAlarm() {
-  // ユーザー操作時にこれを実行する必要がある
-  try {
-    if (typeof SoundManager !== 'undefined' && SoundManager.ctx && SoundManager.ctx.state === 'suspended') {
-      SoundManager.ctx.resume();
-    }
-  } catch (e) {
-    console.error("Audio resume failed:", e);
-  }
   const isClockMode = document.getElementById('time-clock-mode').style.display !== 'none';
   let h, m;
   if (isClockMode) { h = clockH; m = clockM; }
@@ -2373,31 +2361,13 @@ function fireAlarm(a) {
   const card = document.getElementById('acard-' + a.id);
   if (card) card.classList.add('firing');
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('⏰ SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), requireInteraction: true });
+    new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です') });
   }
-  // まず音の再生を試みる（PCなどユーザー操作コンテキスト内ならそのまま鳴る）
-  // スマホで suspended の場合は STOPボタンへの最初のタッチイベントで再試行する
-  startAlarmSound(a).catch(() => {});
-
-  // スマホ向け保険: STOPボタンへの touchstart（ユーザー操作）で AudioContext を resume させる
-  const stopBtn = document.getElementById('btn-stop');
-  if (stopBtn) {
-    const resumeOnTouch = () => {
-      stopBtn.removeEventListener('touchstart', resumeOnTouch);
-      stopBtn.removeEventListener('mousedown', resumeOnTouch);
-      // すでに音が鳴っていれば何もしない、鳴っていなければ再起動
-      if (!firingCtx && !firingAudio && firingAlarm) {
-        startAlarmSound(firingAlarm).catch(() => {});
-      } else if (firingCtx && firingCtx.state === 'suspended') {
-        firingCtx.resume().catch(() => {});
-      }
-    };
-    stopBtn.addEventListener('touchstart', resumeOnTouch, { passive: true });
-    stopBtn.addEventListener('mousedown', resumeOnTouch);
-  }
+  if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
+  startAlarmSound(a);
 }
 
-// ── 音楽ファイルを使うか判定するヘルパー ──
+// ── 音楽ファイルデータ取得 ──
 function getFreshMusicData(alarmId) {
   const uid = getCurrentUserId();
   let store = musicStore;
@@ -2408,72 +2378,48 @@ function getFreshMusicData(alarmId) {
   return store[alarmId]?.data || null;
 }
 
-async function startAlarmSound(a) {
+// ── アラーム音再生（v7ベース：シンプルに即鳴らす） ──
+function startAlarmSound(a) {
   stopAlarmSound();
   const hint = document.getElementById('firing-music-hint');
+  if (hint) hint.style.display = 'none';
 
-  // AudioContext を作成し、suspended なら resume を必ず待つ
-  async function makeCtx() {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') {
-      try { await ctx.resume(); } catch (e) { console.warn('[alarm] ctx.resume failed:', e); }
-    }
-    return ctx;
-  }
+  // ビープ/やさしい音/緊急音：v7と同じシンプルな実装
+  // AudioContext を作って即 playTones → スマホでも動作する
+  try {
+    firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+    playTones(firingCtx, a.sound || 'beep', 1);
+    loopTimer = setInterval(() => {
+      if (firingCtx) playTones(firingCtx, a.sound || 'beep', 1);
+    }, 1500);
+  } catch (e) { console.warn('[alarm] startAlarmSound error:', e); }
 
+  // 音楽ファイルの場合はSTOPタップ時に再生（自動再生ポリシー回避）
   if (a.sound === 'music' && getFreshMusicData(a.id)) {
-    // ── 音楽モード：まずビープで鳴らし、STOPタップで音楽へ切り替え ──
-    try {
-      firingCtx = await makeCtx();
-      playTones(firingCtx, 'beep', 1);
-      loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
-    } catch (e) { console.warn('[alarm] music-mode beep error:', e); }
-    _pendingMusicAlarm = a;
     if (hint) hint.style.display = '';
+    _pendingMusicAlarm = a;
   } else {
-    // ── ビープ/gentle/urgent モード ──
     _pendingMusicAlarm = null;
-    if (hint) hint.style.display = 'none';
-    try {
-      firingCtx = await makeCtx();
-      playTones(firingCtx, a.sound || 'beep', 1);
-      loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
-    } catch (e) { console.warn('[alarm] beep error:', e); }
   }
 }
 
-// ── STOPボタンの最初のタップで音楽に切り替え、2回目でSTOP ──
 let _pendingMusicAlarm = null;
-let _musicStarted = false;
 
-async function handleStopTap() {
-  const hint = document.getElementById('firing-music-hint');
-  if (_pendingMusicAlarm && !_musicStarted) {
-    _musicStarted = true;
+// STOPボタン：ビープ中は即停止。音楽モードの場合は1回目タップで音楽→2回目で停止
+function handleStopTap() {
+  if (_pendingMusicAlarm) {
+    // 音楽モード：ユーザー操作コンテキストで音楽再生
     const a = _pendingMusicAlarm;
+    _pendingMusicAlarm = null;
+    stopAlarmSound(); // ビープを止める
     const data = getFreshMusicData(a.id);
     if (data) {
-      stopAlarmSound();
-      try {
-        firingAudio = new Audio();
-        firingAudio.loop = true;
-        firingAudio.src = data;
-        firingAudio.play().catch(async err => {
-          console.warn('[handleStopTap] play blocked:', err.message);
-          firingAudio = null;
-          firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-          if (firingCtx.state === 'suspended') { try { await firingCtx.resume(); } catch(e){} }
-          playTones(firingCtx, 'beep', 1);
-          loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
-          if (hint) hint.style.display = 'none';
-        });
-      } catch (e) {
-        firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (firingCtx.state === 'suspended') { try { await firingCtx.resume(); } catch(ex){} }
-        playTones(firingCtx, 'beep', 1);
-        loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
-      }
+      const hint = document.getElementById('firing-music-hint');
       if (hint) hint.style.display = 'none';
+      firingAudio = new Audio(data);
+      firingAudio.loop = true;
+      firingAudio.play().catch(() => stopAlarm()); // 再生失敗なら停止
+      // 次のタップでSTOP（handleStopTap再呼び出しで stopAlarm）
     } else {
       stopAlarm();
     }
@@ -2491,7 +2437,6 @@ function stopAlarmSound() {
 function stopAlarm() {
   stopAlarmSound();
   _pendingMusicAlarm = null;
-  _musicStarted = false;
   const hint = document.getElementById('firing-music-hint');
   if (hint) hint.style.display = 'none';
   document.getElementById('firing-overlay').classList.remove('open');
@@ -2502,8 +2447,6 @@ function stopAlarm() {
 function snoozeAlarm() {
   const a = firingAlarm; stopAlarm();
   if (!a) return;
-  _pendingMusicAlarm = null;
-  _musicStarted = false;
   setTimeout(() => fireAlarm(a), snoozeMin * 60 * 1000);
   showSnack(`${snoozeMin}分後に再通知します`);
 }
