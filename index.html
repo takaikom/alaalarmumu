@@ -1008,6 +1008,7 @@ let musicStore = {};
 
 let previewCtx = null, previewTimer = null;
 let sharedAudioCtx = null; // ユーザー操作で resume 済みの AudioContext を保持・使い回す
+let alarmPlaying = false;  // playPattern ループ継続フラグ
 let currentTimerPresetId = null;
 let timerPhases = [];
 let timerState = 'idle';
@@ -2393,7 +2394,7 @@ function getFreshMusicData(alarmId) {
   return store[alarmId]?.data || null;
 }
 
-// ── アラーム音再生（初期実装ベース：PWAでも動作実績あり） ──
+// ── アラーム音再生 ──
 function startAlarmSound(a) {
   stopAlarmSound();
   const hint = document.getElementById('firing-music-hint');
@@ -2408,32 +2409,23 @@ function startAlarmSound(a) {
   }
 
   // ビープ/やさしい音/緊急音
+  // sharedAudioCtx（ユーザー操作で resume 済み）を使い回す。なければ新規作成。
   try {
     if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
       sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     firingCtx = sharedAudioCtx;
-    // デバッグ用：状態を画面に表示
-    const dbg = document.getElementById('firing-label');
-    if (dbg) dbg.textContent += '  [ctx:' + firingCtx.state + ']';
+    alarmPlaying = true;
     if (firingCtx.state === 'suspended') {
-      firingCtx.resume().then(() => {
-        if (dbg) dbg.textContent += '→resumed';
-        playPattern(a.sound || 'beep');
-      }).catch(err => {
-        if (dbg) dbg.textContent += '→resumeERR:' + err;
-      });
+      firingCtx.resume().then(() => { if (alarmPlaying) playPattern(a.sound || 'beep'); });
     } else {
       playPattern(a.sound || 'beep');
     }
-  } catch (e) {
-    const dbg = document.getElementById('firing-label');
-    if (dbg) dbg.textContent += ' [ERR:' + e + ']';
-  }
+  } catch (e) { console.warn('[alarm] startAlarmSound error:', e); }
 }
 
 function playPattern(type) {
-  if (!firingCtx || !firingAlarm) return;
+  if (!alarmPlaying || !firingCtx) return;
   const ctx = firingCtx;
 
   function beepSequence(freqs, duration, gap, repeat) {
@@ -2462,7 +2454,7 @@ function playPattern(type) {
   };
 
   const endTime = (patterns[type] || patterns.beep)();
-  loopTimer = setTimeout(() => { if (firingAlarm) playPattern(type); }, (endTime - ctx.currentTime) * 1000);
+  loopTimer = setTimeout(() => { if (alarmPlaying) playPattern(type); }, (endTime - ctx.currentTime) * 1000);
 }
 
 let _pendingMusicAlarm = null;
@@ -2489,9 +2481,10 @@ function handleStopTap() {
 }
 
 function stopAlarmSound() {
+  alarmPlaying = false;
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
-  // firingCtx は sharedAudioCtx と同一なので close しない（次のアラームでも使い回す）
+  // sharedAudioCtx は close しない（次回も使い回す）
   firingCtx = null;
 }
 
