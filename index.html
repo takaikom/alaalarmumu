@@ -2408,19 +2408,28 @@ function startAlarmSound(a) {
   }
 
   // ビープ/やさしい音/緊急音
-  // sharedAudioCtx（試聴等のユーザー操作で resume 済み）を使い回す。
-  // なければ新規作成して resume() してから鳴らす。
   try {
     if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
       sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     firingCtx = sharedAudioCtx;
+    // デバッグ用：状態を画面に表示
+    const dbg = document.getElementById('firing-label');
+    if (dbg) dbg.textContent += '  [ctx:' + firingCtx.state + ']';
     if (firingCtx.state === 'suspended') {
-      firingCtx.resume().then(() => playPattern(a.sound || 'beep'));
+      firingCtx.resume().then(() => {
+        if (dbg) dbg.textContent += '→resumed';
+        playPattern(a.sound || 'beep');
+      }).catch(err => {
+        if (dbg) dbg.textContent += '→resumeERR:' + err;
+      });
     } else {
       playPattern(a.sound || 'beep');
     }
-  } catch (e) { console.warn('[alarm] startAlarmSound error:', e); }
+  } catch (e) {
+    const dbg = document.getElementById('firing-label');
+    if (dbg) dbg.textContent += ' [ERR:' + e + ']';
+  }
 }
 
 function playPattern(type) {
