@@ -407,7 +407,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-btn.secondary:active{background:var(--surface3);}
 
 /* タイマー詳細ビューのback btn */
-.back-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;position:sticky;top:136px;z-index:47;background:var(--bg);padding:8px 16px 4px;margin-left:-16px;margin-right:-16px;}
+.back-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;position:sticky;top:134px;z-index:40;background:var(--bg);padding:6px 0 6px;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;}
 .back-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .back-btn:active{background:var(--surface3);}
 .timer-detail-title{font-size:16px;font-weight:700;flex:1;cursor:pointer;}
@@ -546,18 +546,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <div><div class="settings-row-title">音声アナウンス</div><div class="settings-row-sub">Web Speech API（日本語）</div></div>
         <label class="sw"><input type="checkbox" id="announce-speech" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
       </div>
-      <div class="settings-row" id="voice-select-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
-        <div>
-          <div class="settings-row-title">読み上げ音声の選択</div>
-          <div class="settings-row-sub">端末にインストールされた日本語音声から選択。Google TTSアプリを追加インストールすると音質が向上することがあります。</div>
-        </div>
-        <div style="display:flex;gap:8px;width:100%;align-items:center;">
-          <select id="voice-select" class="form-input" style="flex:1;height:38px;font-size:13px;" onchange="saveVoicePreference(this.value)">
-            <option value="">（デフォルト）</option>
-          </select>
-          <button class="settings-btn" onclick="previewVoice()">試聴</button>
-        </div>
-      </div>
       <div class="settings-row">
         <div><div class="settings-row-title">効果音（ビープ）</div><div class="settings-row-sub">ステップ切替時に鳴らす</div></div>
         <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
@@ -667,7 +655,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.3</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.4</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
     <div class="settings-row">
       <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
       <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
@@ -722,7 +710,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
               </div>
             </div>
             <button class="btn-mode-toggle" onclick="toggleTimeMode()">🕐 時計</button>
-            <button class="btn-mode-toggle" onclick="document.getElementById('t-h').blur();document.getElementById('t-m').blur();">→ 確定</button>
           </div>
           <div class="time-hint">▲▼で調整、または入力欄をタップして直接入力（時: 0〜23、分: 0〜59）</div>
         </div>
@@ -1003,11 +990,6 @@ let selAlarmId = null;
 let firingAlarm = null, firingAudio = null, firingCtx = null;
 let loopTimer = null;
 let lastCheckedMin = -1;
-let alarmSoundType = null;
-let alarmLoopGeneration = 0;
-let alarmAudioCtx = null;
-let alarmAudioUnlocked = false;
-let alarmUnlockBound = false;
 let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
 let musicStore = {};
 
@@ -1022,46 +1004,46 @@ let timerTotalElapsed = 0;
 let timerTotalSec = 0;
 let phaseUndoStack = []; // {phase, index} の配列（最大5件）
 
-// ── 編集ロック状態 ──
-let alarmLocked = false;
-let timerLocked = false;
+// ── 編集ロック状態（ユーザーごとに保存） ──
+// phaseLocked はタイマー詳細画面専用のメモリ内状態（開くたびにリセット）
 let phaseLocked = false;
 
-// ── ユーザーごとのロック状態を localStorage に保存／読み込み ──
-function getLockKey(type) {
-  return 'sa_lock_' + type + '_' + getCurrentUserId();
+function _lockKey(type) {
+  return 'sa_lock_' + type + '_' + getCurrentGroupId() + '_' + getCurrentUserId();
 }
-function loadUserLocks() {
-  alarmLocked = localStorage.getItem(getLockKey('alarm')) === '1';
-  timerLocked = localStorage.getItem(getLockKey('timer')) === '1';
+function getAlarmLocked() { return localStorage.getItem(_lockKey('alarm')) === '1'; }
+function setAlarmLocked(v) { localStorage.setItem(_lockKey('alarm'), v ? '1' : '0'); }
+function getTimerLocked() { return localStorage.getItem(_lockKey('timer')) === '1'; }
+function setTimerLocked(v) { localStorage.setItem(_lockKey('timer'), v ? '1' : '0'); }
+
+function applyAlarmLockUI() {
+  const locked = getAlarmLocked();
+  const btn = document.getElementById('alarm-lock-btn');
+  if (btn) { btn.textContent = locked ? '🔒' : '🔓'; btn.classList.toggle('locked', locked); }
+  const list = document.getElementById('alarm-list');
+  if (list) list.classList.toggle('alarm-edit-locked', locked);
 }
-function saveAlarmLock() { localStorage.setItem(getLockKey('alarm'), alarmLocked ? '1' : '0'); }
-function saveTimerLock() { localStorage.setItem(getLockKey('timer'), timerLocked ? '1' : '0'); }
+
+function applyTimerLockUI() {
+  const locked = getTimerLocked();
+  const btn = document.getElementById('timer-lock-btn');
+  if (btn) { btn.textContent = locked ? '🔒' : '🔓'; btn.classList.toggle('locked', locked); }
+  const list = document.getElementById('timer-card-list');
+  if (list) list.classList.toggle('timer-edit-locked', locked);
+}
 
 function toggleAlarmLock() {
-  alarmLocked = !alarmLocked;
-  saveAlarmLock();
-  const btn = document.getElementById('alarm-lock-btn');
-  if (btn) { btn.textContent = alarmLocked ? '🔒' : '🔓'; btn.classList.toggle('locked', alarmLocked); }
-  const list = document.getElementById('alarm-list');
-  if (list) list.classList.toggle('alarm-edit-locked', alarmLocked);
-  showSnack(alarmLocked ? '🔒 アラーム編集をロックしました' : '🔓 アラーム編集のロックを解除しました');
+  const locked = !getAlarmLocked();
+  setAlarmLocked(locked);
+  applyAlarmLockUI();
+  showSnack(locked ? '🔒 アラーム編集をロックしました' : '🔓 アラーム編集のロックを解除しました');
 }
 
 function toggleTimerLock() {
-  timerLocked = !timerLocked;
-  saveTimerLock();
-  const btn = document.getElementById('timer-lock-btn');
-  if (btn) { btn.textContent = timerLocked ? '🔒' : '🔓'; btn.classList.toggle('locked', timerLocked); }
-  applyTimerListLock();
-  showSnack(timerLocked ? '🔒 タイマー削除をロックしました' : '🔓 タイマー削除のロックを解除しました');
-}
-
-// ② タイマー一覧のロックは削除のみ（追加・開くは制限しない）
-function applyTimerListLock() {
-  const list = document.getElementById('timer-card-list');
-  if (list) list.classList.toggle('timer-edit-locked', timerLocked);
-  // 追加ボタンはロックしない（削除のみ対象）
+  const locked = !getTimerLocked();
+  setTimerLocked(locked);
+  applyTimerLockUI();
+  showSnack(locked ? '🔒 タイマー削除をロックしました' : '🔓 タイマー削除のロックを解除しました');
 }
 
 function togglePhaseLock() {
@@ -1291,6 +1273,8 @@ function fullRefreshUI() {
   renderCalendar();
   renderCalAlarmList();
   renderTimerList();
+  applyAlarmLockUI();
+  applyTimerLockUI();
   try { renderGroupSheet(); } catch(e) {}
 }
 
@@ -1346,66 +1330,6 @@ function loadUserData() {
   } catch { alarms = []; holidays = {}; overrides = {}; timerPresets = []; }
   document.getElementById('snooze-sel').value = snoozeMin;
   document.getElementById('snooze-disp').textContent = snoozeMin;
-  // ① ユーザーごとのロック状態を読み込む
-  loadUserLocks();
-  const alarmBtn = document.getElementById('alarm-lock-btn');
-  if (alarmBtn) { alarmBtn.textContent = alarmLocked ? '🔒' : '🔓'; alarmBtn.classList.toggle('locked', alarmLocked); }
-  const timerBtn = document.getElementById('timer-lock-btn');
-  if (timerBtn) { timerBtn.textContent = timerLocked ? '🔒' : '🔓'; timerBtn.classList.toggle('locked', timerLocked); }
-}
-
-// ───────────────────────────────────────────
-// ALARM AUDIO
-// ───────────────────────────────────────────
-function ensureAlarmAudioCtx() {
-  try {
-    if (!alarmAudioCtx || alarmAudioCtx.state === 'closed') {
-      alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    firingCtx = alarmAudioCtx;
-    return alarmAudioCtx;
-  } catch (e) {
-    console.warn('[alarm] AudioContext init failed:', e);
-    return null;
-  }
-}
-
-function unlockAlarmAudio() {
-  const ctx = ensureAlarmAudioCtx();
-  if (!ctx) return Promise.resolve(false);
-  const finalize = () => {
-    try {
-      const src = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      src.buffer = ctx.createBuffer(1, 1, 22050);
-      gain.gain.value = 0.00001;
-      src.connect(gain);
-      gain.connect(ctx.destination);
-      src.start(0);
-    } catch (e) {}
-    alarmAudioUnlocked = true;
-    return true;
-  };
-  if (ctx.state === 'suspended') {
-    return ctx.resume().then(finalize).catch(err => {
-      console.warn('[alarm] resume failed:', err);
-      return false;
-    });
-  }
-  finalize();
-  return Promise.resolve(true);
-}
-
-function initAlarmAudio() {
-  if (alarmUnlockBound) return;
-  alarmUnlockBound = true;
-  const onceUnlock = () => { unlockAlarmAudio(); };
-  ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(type => {
-    document.addEventListener(type, onceUnlock, { passive: true });
-  });
-  window.addEventListener('pageshow', () => {
-    if (firingAlarm) unlockAlarmAudio();
-  });
 }
 
 // ───────────────────────────────────────────
@@ -1436,20 +1360,9 @@ function init() {
   renderCalendar();
   updateHolidayStatus();
   startClock();
-  initAlarmAudio();
-  setInterval(checkAlarms, 1000);
+  setInterval(checkAlarms, 5000);
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      checkAlarms();
-      if (firingAlarm) {
-        unlockAlarmAudio().then(ok => {
-          if (ok && !loopTimer && !firingAudio) startAlarmSound(firingAlarm);
-        });
-      }
-    }
-  });
   renderTimerList();
   renderGroupName();
   renderUserTabsWrap();
@@ -1463,30 +1376,8 @@ function init() {
   tm.addEventListener('focus', function() { this.select(); });
   th.addEventListener('input', function() { clampNum(this, 0, 23); });
   tm.addEventListener('input', function() { clampNum(this, 0, 59); });
-  [th, tm].forEach(el => el.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); this.blur(); }
-  }));
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
-  // 音声リスト初期化（voiceschanged で再実行）
-  if ('speechSynthesis' in window) {
-    populateVoiceSelect();
-    window.speechSynthesis.onvoiceschanged = populateVoiceSelect;
-  }
-  const stopBtn = document.getElementById('btn-stop');
-  if (stopBtn && !stopBtn.dataset.boundStop) {
-    stopBtn.dataset.boundStop = '1';
-    const stopNow = ev => {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      handleStopTap();
-    };
-    stopBtn.addEventListener('click', stopNow, { passive: false });
-    stopBtn.addEventListener('pointerup', stopNow, { passive: false });
-    stopBtn.addEventListener('touchend', stopNow, { passive: false });
-  }
 }
 
 function renderGroupName() {
@@ -2031,7 +1922,7 @@ function renderAlarms() {
   el.innerHTML = html;
   activeAlarms.forEach(a => initSwipeDelete(a.id));
   // ロック状態を再適用
-  el.classList.toggle('alarm-edit-locked', alarmLocked);
+  applyAlarmLockUI();
 }
 
 function initSwipeDelete(id) {
@@ -2058,7 +1949,7 @@ function initSwipeDelete(id) {
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (alarmLocked) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (getAlarmLocked()) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (-curX >= THRESHOLD) {
       card.style.transform = `translateX(-100%)`;
       card.style.transition = 'transform .25s ease';
@@ -2111,7 +2002,7 @@ function purgeAllAlarms() {
 // ───────────────────────────────────────────
 function openModal(id = null) {
   // 編集の場合はロックチェック、追加は許可
-  if (id && alarmLocked) { showSnack('🔒 ロック中です。解除してから編集してください'); return; }
+  if (id && getAlarmLocked()) { showSnack('🔒 ロック中です。解除してから編集してください'); return; }
   document.getElementById('edit-id').value = id || '';
   document.getElementById('sheet-title').textContent = id ? 'アラームを編集' : 'アラームを追加';
   document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('sel'));
@@ -2208,13 +2099,10 @@ function selSound(el) {
 function previewSound(type, e) {
   e.stopPropagation();
   if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
-  if (previewCtx) { try { previewCtx.close(); } catch(ex) {} previewCtx = null; }
+  if (previewCtx) { try { previewCtx.close(); } catch (e) {} previewCtx = null; }
   previewCtx = new (window.AudioContext || window.webkitAudioContext)();
   playTones(previewCtx, type, 3);
-  previewTimer = setTimeout(() => {
-    try { previewCtx.close(); } catch(ex) {}
-    previewCtx = null; previewTimer = null;
-  }, 4000);
+  previewTimer = setTimeout(() => { try { previewCtx?.close(); } catch (e) {} previewCtx = null; }, 4000);
 }
 
 function onMusicFile(e) {
@@ -2445,13 +2333,12 @@ function fireAlarm(a) {
   const card = document.getElementById('acard-' + a.id);
   if (card) card.classList.add('firing');
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です') });
+    new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), silent: true });
   }
-  if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
   startAlarmSound(a);
 }
 
-// ── 音楽ファイルデータ取得 ──
+// ── 音楽ファイルを使うか判定するヘルパー ──
 function getFreshMusicData(alarmId) {
   const uid = getCurrentUserId();
   let store = musicStore;
@@ -2462,75 +2349,88 @@ function getFreshMusicData(alarmId) {
   return store[alarmId]?.data || null;
 }
 
-function scheduleNextAlarmBurst(gen) {
-  if (loopTimer) clearTimeout(loopTimer);
-  loopTimer = setTimeout(() => {
-    if (gen !== alarmLoopGeneration || !firingAlarm) return;
-    const ctx = ensureAlarmAudioCtx();
-    if (!ctx) return;
-    const play = () => {
-      if (gen !== alarmLoopGeneration || !firingAlarm) return;
-      playTones(ctx, alarmSoundType || 'beep', 1);
-      scheduleNextAlarmBurst(gen);
-    };
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(play).catch(err => {
-        console.warn('[alarm] resume retry failed:', err);
-        scheduleNextAlarmBurst(gen);
-      });
-    } else {
-      play();
-    }
-  }, 1400);
-}
-
 function startAlarmSound(a) {
-  stopAlarmSound(false);
+  stopAlarmSound();
   const hint = document.getElementById('firing-music-hint');
-  if (hint) hint.style.display = 'none';
-  alarmSoundType = a.sound || 'beep';
 
-  if (alarmSoundType === 'music') {
-    return;
-  }
-
-  const ctx = ensureAlarmAudioCtx();
-  if (!ctx) return;
-  const gen = ++alarmLoopGeneration;
-  const startBurst = () => {
-    if (gen !== alarmLoopGeneration || !firingAlarm) return;
-    playTones(ctx, alarmSoundType, 1);
-    scheduleNextAlarmBurst(gen);
-  };
-
-  if (ctx.state === 'suspended') {
-    ctx.resume().then(() => {
-      alarmAudioUnlocked = true;
-      startBurst();
-    }).catch(err => {
-      console.warn('[alarm] initial resume failed:', err);
-      showSnack('音声を有効にするため、画面を一度タップしてください');
-    });
+  if (a.sound === 'music' && getFreshMusicData(a.id)) {
+    // ── 音楽モード ──
+    // Step1: まずビープで鳴らす（autoplay制限を回避するため）
+    try {
+      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // AudioContextがsuspendedの場合はresumeを試みる
+      if (firingCtx.state === 'suspended') firingCtx.resume();
+      loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+      playTones(firingCtx, 'beep', 1);
+    } catch (e) {}
+    // Step2: STOPボタンタップ時に音楽へ切り替えるフラグを立てる
+    _pendingMusicAlarm = a;
+    if (hint) hint.style.display = '';
   } else {
-    alarmAudioUnlocked = true;
-    startBurst();
+    // ── ビープ/gentle/urgentモード ──
+    _pendingMusicAlarm = null;
+    if (hint) hint.style.display = 'none';
+    try {
+      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (firingCtx.state === 'suspended') firingCtx.resume();
+      loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
+      playTones(firingCtx, a.sound || 'beep', 1);
+    } catch (e) {}
   }
 }
+
+// ── STOPボタンの最初のタップで音楽に切り替え、2回目でSTOP ──
+let _pendingMusicAlarm = null;
+let _musicStarted = false;
 
 function handleStopTap() {
-  stopAlarm();
+  const hint = document.getElementById('firing-music-hint');
+  if (_pendingMusicAlarm && !_musicStarted) {
+    // 1回目タップ：ユーザー操作コンテキストで音楽再生開始
+    _musicStarted = true;
+    const a = _pendingMusicAlarm;
+    const data = getFreshMusicData(a.id);
+    if (data) {
+      // ビープを止めて音楽を開始
+      stopAlarmSound();
+      try {
+        firingAudio = new Audio();
+        firingAudio.loop = true;
+        firingAudio.src = data;
+        firingAudio.play().catch(err => {
+          // まだブロックされた場合はビープに戻す
+          console.warn('[handleStopTap] play blocked:', err.message);
+          firingAudio = null;
+          firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+          loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+          playTones(firingCtx, 'beep', 1);
+          if (hint) hint.style.display = 'none';
+        });
+      } catch (e) {
+        firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+        loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+      }
+      if (hint) hint.style.display = 'none';
+      // 次のタップでSTOP
+    } else {
+      stopAlarm();
+    }
+  } else {
+    // 2回目以降のタップ：STOP
+    stopAlarm();
+  }
 }
 
-function stopAlarmSound(resetType = true) {
-  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  alarmLoopGeneration++;
+function stopAlarmSound() {
+  clearInterval(loopTimer); loopTimer = null;
   if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
-  if (navigator.vibrate) navigator.vibrate(0);
-  if (resetType) alarmSoundType = null;
+  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
 }
 
 function stopAlarm() {
   stopAlarmSound();
+  _pendingMusicAlarm = null;
+  _musicStarted = false;
   const hint = document.getElementById('firing-music-hint');
   if (hint) hint.style.display = 'none';
   document.getElementById('firing-overlay').classList.remove('open');
@@ -2541,6 +2441,8 @@ function stopAlarm() {
 function snoozeAlarm() {
   const a = firingAlarm; stopAlarm();
   if (!a) return;
+  _pendingMusicAlarm = null;
+  _musicStarted = false;
   setTimeout(() => fireAlarm(a), snoozeMin * 60 * 1000);
   showSnack(`${snoozeMin}分後に再通知します`);
 }
@@ -3054,8 +2956,7 @@ function renderTimerList() {
   el.innerHTML = html;
   activePresets.forEach(p => initTimerSwipeDelete(p.id));
   // ロック状態を再適用
-  // ② ロックは削除のみ対象（追加・開くは制限しない）
-  el.classList.toggle('timer-edit-locked', timerLocked);
+  applyTimerLockUI();
 }
 
 function initTimerSwipeDelete(id) {
@@ -3081,7 +2982,7 @@ function initTimerSwipeDelete(id) {
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (timerLocked) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (getTimerLocked()) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (-curX >= THRESHOLD) {
       card.style.transform = `translateX(-100%)`;
       card.style.transition = 'transform .25s ease';
@@ -3230,43 +3131,29 @@ async function executeTimerCopy() {
 
   const [destGid, destUid] = checked.value.split('|');
 
-  // コピーするプリセット（新しいIDを付与）
+  // コピーするプリセット（新しいIDを付与して完全独立化）
   const newPreset = JSON.parse(JSON.stringify(preset));
-  newPreset.id = 'tp' + Date.now();
+  newPreset.id = 'tp' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+  // フェーズ内にIDがあれば全て再発行
+  if (Array.isArray(newPreset.phases)) {
+    newPreset.phases = newPreset.phases.map(ph => {
+      const p2 = Object.assign({}, ph);
+      if (p2.id) p2.id = 'ph' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+      return p2;
+    });
+  }
 
   const curGid = getCurrentGroupId();
 
   if (destGid === curGid) {
-    // ④ 同グループ内の別ユーザーへ（コピー後は完全独立：コピー先も含めてGASに送信）
+    // 同グループ内の別ユーザーへ
     const d = getGroupCache();
     const destUser = d.users.find(u => u.id === destUid);
     if (!destUser) { showSnack('コピー先ユーザーが見つかりません'); return; }
     if (!destUser.timerPresets) destUser.timerPresets = [];
     destUser.timerPresets.push(newPreset);
     setGroupCache(d);
-    // 全ユーザーを含めてGASに送信（コピー先ユーザーのデータも確実に反映）
-    if (getGasUrl()) {
-      const gasUrl = getGasUrl();
-      const g = getCurrentGroup();
-      try {
-        const remoteData = await remoteLoad();
-        const remoteUsers = (remoteData && remoteData.users) ? remoteData.users.slice() : d.users.slice();
-        // コピー先ユーザーを差し替え
-        const di = remoteUsers.findIndex(u => u.id === destUid);
-        if (di >= 0) remoteUsers[di] = JSON.parse(JSON.stringify(destUser)); else remoteUsers.push(JSON.parse(JSON.stringify(destUser)));
-        // コピー元（現在）ユーザーも差し替え
-        const curUser = d.users.find(u => u.id === getCurrentUserId());
-        if (curUser) {
-          const ci = remoteUsers.findIndex(u => u.id === getCurrentUserId());
-          if (ci >= 0) remoteUsers[ci] = JSON.parse(JSON.stringify(curUser)); else remoteUsers.push(JSON.parse(JSON.stringify(curUser)));
-        }
-        await fetch(gasUrl, {
-          method: 'POST', redirect: 'follow',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ users: remoteUsers, deletedUsers: d.deletedUsers || [], groupName: g ? g.name : '', _sentAt: Date.now() })
-        });
-      } catch(e) { console.warn('タイマーコピーGAS送信失敗:', e); }
-    }
+    if (getGasUrl()) pushToRemote().catch(() => {});
   } else {
     // 別グループの別ユーザーへ
     let destData = loadGroupData(destGid) || { currentUserId: destUid, users: [], deletedUsers: [] };
@@ -3309,7 +3196,6 @@ function deleteTimerPreset(id) {
 }
 
 function openTimerDetail(id) {
-  // ② ロックはタイマー一覧の削除のみ対象。タイマーを開く操作はロックしない
   // タイマー実行中なら止める
   if (timerState !== 'idle') timerReset();
 
@@ -3798,50 +3684,15 @@ function playCountdownTick() {
   } catch (e) {}
 }
 
-// ── 音声選択（Voice Selector） ──
-function getAvailableJaVoices() {
-  return window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
-}
-
-function populateVoiceSelect() {
-  const sel = document.getElementById('voice-select');
-  if (!sel || !('speechSynthesis' in window)) return;
-  const voices = getAvailableJaVoices();
-  const saved = localStorage.getItem('sa_voice_name') || '';
-  sel.innerHTML = '<option value=>' + (voices.length ? '（デフォルト: ' + (voices[0]?.name || '自動') + '）' : '（音声なし）') + '</option>';
-  voices.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.name;
-    opt.textContent = v.name + (v.localService ? ' ★' : ' ☁');
-    opt.selected = (v.name === saved);
-    sel.appendChild(opt);
-  });
-}
-
-function saveVoicePreference(name) {
-  localStorage.setItem('sa_voice_name', name);
-}
-
-function getSelectedVoice() {
-  const saved = localStorage.getItem('sa_voice_name') || '';
-  const voices = getAvailableJaVoices();
-  if (!voices.length) return null;
-  if (saved) { const v = voices.find(v => v.name === saved); if (v) return v; }
-  return voices[0];
-}
-
-function previewVoice() {
-  speak('テスト。タイマーがスタートしました。');
-}
-
 function speak(text) {
   if (!document.getElementById('announce-speech')?.checked) return;
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = 'ja-JP'; utter.rate = 0.95; utter.pitch = 1.1;
-  const voice = getSelectedVoice();
-  if (voice) utter.voice = voice;
+  const voices = window.speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jaVoice) utter.voice = jaVoice;
   window.speechSynthesis.speak(utter);
 }
 
@@ -3982,6 +3833,5 @@ function updateThemeUI(mode) {
 
 init();
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
