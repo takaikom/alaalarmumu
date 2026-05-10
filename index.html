@@ -1401,18 +1401,6 @@ function init() {
   }));
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
-  // 最初のユーザー操作で AudioContext を事前 resume
-  // （PWA/APK では操作なしに AudioContext が suspended のまま → 音が出ない対策）
-  const _warmUp = () => {
-    _warmUpAudioCtx();
-    document.removeEventListener('touchstart', _warmUp);
-    document.removeEventListener('mousedown', _warmUp);
-    document.removeEventListener('keydown', _warmUp);
-  };
-  document.addEventListener('touchstart', _warmUp, { once: true, passive: true });
-  document.addEventListener('mousedown', _warmUp, { once: true });
-  document.addEventListener('keydown', _warmUp, { once: true });
-
   // 音声リスト初期化（voiceschanged で再実行）
   if ('speechSynthesis' in window) {
     populateVoiceSelect();
@@ -2139,11 +2127,10 @@ function selSound(el) {
 function previewSound(type, e) {
   e.stopPropagation();
   if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
-  getSharedAudioCtx().then(ctx => {
-    if (!ctx) return;
-    playTones(ctx, type, 3);
-    previewTimer = setTimeout(() => { previewTimer = null; }, 4000);
-  });
+  if (previewCtx) { try { previewCtx.close(); } catch (e) {} previewCtx = null; }
+  previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playTones(previewCtx, type, 3);
+  previewTimer = setTimeout(() => { try { previewCtx?.close(); } catch (e) {} previewCtx = null; }, 4000);
 }
 
 function onMusicFile(e) {
@@ -2391,61 +2378,58 @@ function getFreshMusicData(alarmId) {
   return store[alarmId]?.data || null;
 }
 
-// ── 共有 AudioContext（ユーザー操作で初期化・以降再利用） ──
-let _sharedAudioCtx = null;
-
-function getSharedAudioCtx() {
-  return new Promise(resolve => {
-    try {
-      if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
-        _sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (_sharedAudioCtx.state === 'running') { resolve(_sharedAudioCtx); return; }
-      _sharedAudioCtx.resume().then(() => resolve(_sharedAudioCtx)).catch(() => resolve(null));
-    } catch (e) { resolve(null); }
-  });
-}
-
-// アプリ全体の最初のユーザー操作で AudioContext を事前に初期化・resume
-function _warmUpAudioCtx() {
-  getSharedAudioCtx().then(ctx => {
-    if (ctx) {
-      // 無音を一瞬鳴らして iOS Safari 等の再生ロックを解除
-      try {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, ctx.currentTime);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.001);
-      } catch (e) {}
-    }
-  });
-}
-
-// ── アラーム音再生（PWA/APK 対応版） ──
+// ── アラーム音再生（初期実装ベース：PWAでも動作実績あり） ──
 function startAlarmSound(a) {
   stopAlarmSound();
   const hint = document.getElementById('firing-music-hint');
   if (hint) hint.style.display = 'none';
 
-  // 音楽ファイルの場合：STOPタップ時に再生（自動再生ポリシー回避）
+  // 音楽ファイルの場合はSTOPタップ時に再生（自動再生ポリシー回避）
   if (a.sound === 'music' && getFreshMusicData(a.id)) {
     if (hint) hint.style.display = '';
     _pendingMusicAlarm = a;
-    // ビープも同時に鳴らして存在を伝える
   } else {
     _pendingMusicAlarm = null;
   }
 
-  // ビープ／やさしい音／緊急音：共有 AudioContext を resume してから鳴らす
-  getSharedAudioCtx().then(ctx => {
-    if (!ctx) return;
-    playTones(ctx, a.sound || 'beep', 1);
-    // ループ：shared ctx を使い回す
-    loopTimer = setInterval(() => {
-      getSharedAudioCtx().then(c => { if (c) playTones(c, a.sound || 'beep', 1); });
-    }, 1500);
-  });
+  // ビープ/やさしい音/緊急音：AudioContext を作って playPattern でスケジューリング
+  try {
+    firingCtx = new (window.AudioContext || window.webkitAudioContext)();
+    playPattern(a.sound || 'beep');
+  } catch (e) { console.warn('[alarm] startAlarmSound error:', e); }
+}
+
+function playPattern(type) {
+  if (!firingCtx || !firingAlarm) return;
+  const ctx = firingCtx;
+
+  function beepSequence(freqs, duration, gap, repeat) {
+    let t = ctx.currentTime;
+    for (let r = 0; r < repeat; r++) {
+      for (const f of freqs) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = f;
+        osc.type = type === 'urgent' ? 'sawtooth' : 'sine';
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+        osc.start(t); osc.stop(t + duration);
+        t += duration + gap;
+      }
+      t += 0.3;
+    }
+    return t;
+  }
+
+  const patterns = {
+    beep:   () => beepSequence([880, 880],              0.2,  0.1,  20),
+    gentle: () => beepSequence([523, 659, 784],         0.3,  0.15, 15),
+    urgent: () => beepSequence([1200, 1000, 1200, 800], 0.15, 0.05, 30),
+  };
+
+  const endTime = (patterns[type] || patterns.beep)();
+  loopTimer = setTimeout(() => { if (firingAlarm) playPattern(type); }, (endTime - ctx.currentTime) * 1000);
 }
 
 let _pendingMusicAlarm = null;
@@ -2453,18 +2437,16 @@ let _pendingMusicAlarm = null;
 // STOPボタン：ビープ中は即停止。音楽モードの場合は1回目タップで音楽→2回目で停止
 function handleStopTap() {
   if (_pendingMusicAlarm) {
-    // 音楽モード：ユーザー操作コンテキストで音楽再生
     const a = _pendingMusicAlarm;
     _pendingMusicAlarm = null;
-    stopAlarmSound(); // ビープを止める
+    stopAlarmSound();
     const data = getFreshMusicData(a.id);
     if (data) {
       const hint = document.getElementById('firing-music-hint');
       if (hint) hint.style.display = 'none';
       firingAudio = new Audio(data);
       firingAudio.loop = true;
-      firingAudio.play().catch(() => stopAlarm()); // 再生失敗なら停止
-      // 次のタップでSTOP（handleStopTap再呼び出しで stopAlarm）
+      firingAudio.play().catch(() => stopAlarm());
     } else {
       stopAlarm();
     }
@@ -2474,10 +2456,9 @@ function handleStopTap() {
 }
 
 function stopAlarmSound() {
-  clearInterval(loopTimer); loopTimer = null;
+  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
-  // firingCtx は shared AudioContext になったので閉じない
-  firingCtx = null;
+  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
 }
 
 function stopAlarm() {
@@ -3738,15 +3719,16 @@ function announcePhase(idx) {
 // カウントダウン音（announce-tick スイッチで制御）
 function playCountdownTick() {
   if (!document.getElementById('announce-tick')?.checked) return;
-  getSharedAudioCtx().then(ctx => {
-    if (!ctx) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.connect(g); g.connect(ctx.destination);
     o.frequency.value = 660; o.type = 'sine';
     g.gain.setValueAtTime(.12, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .08);
     o.start(ctx.currentTime); o.stop(ctx.currentTime + .09);
-  });
+    setTimeout(() => ctx.close(), 200);
+  } catch (e) {}
 }
 
 // ── 音声選択（Voice Selector） ──
@@ -3798,8 +3780,8 @@ function speak(text) {
 
 function playBeep(type = 'phase') {
   if (!document.getElementById('announce-beep')?.checked) return;
-  getSharedAudioCtx().then(ctx => {
-    if (!ctx) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (type === 'finish') {
       [523, 659, 784, 1047].forEach((f, i) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -3810,6 +3792,7 @@ function playBeep(type = 'phase') {
         g.gain.exponentialRampToValueAtTime(.001, t + .25);
         o.start(t); o.stop(t + .26);
       });
+      setTimeout(() => ctx.close(), 1200);
     } else {
       [880, 1100].forEach((f, i) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -3820,8 +3803,9 @@ function playBeep(type = 'phase') {
         g.gain.exponentialRampToValueAtTime(.001, t + .15);
         o.start(t); o.stop(t + .16);
       });
+      setTimeout(() => ctx.close(), 600);
     }
-  });
+  } catch (e) {}
 }
 
 // ───────────────────────────────────────────
