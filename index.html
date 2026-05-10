@@ -1007,6 +1007,7 @@ let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
 let musicStore = {};
 
 let previewCtx = null, previewTimer = null;
+let sharedAudioCtx = null; // ユーザー操作で resume 済みの AudioContext を保持・使い回す
 let currentTimerPresetId = null;
 let timerPhases = [];
 let timerState = 'idle';
@@ -1399,6 +1400,17 @@ function init() {
   [th, tm].forEach(el => el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); this.blur(); }
   }));
+  // 最初のユーザー操作で sharedAudioCtx を作成・resume しておく
+  // （PWA/APK では操作なしに AudioContext が suspended のままになるため）
+  const warmUpAudio = () => {
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+  };
+  document.addEventListener('touchstart', warmUpAudio, { once: true, passive: true });
+  document.addEventListener('mousedown',  warmUpAudio, { once: true });
+
   // ヘッダー同期ボタン表示制御
   updateHeaderSyncBtns();
   // 音声リスト初期化（voiceschanged で再実行）
@@ -2127,10 +2139,13 @@ function selSound(el) {
 function previewSound(type, e) {
   e.stopPropagation();
   if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
-  if (previewCtx) { try { previewCtx.close(); } catch (e) {} previewCtx = null; }
-  previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // 既存の ctx を閉じずに使い回す（resume 済み状態をアラーム発火時にも活用）
+  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  previewCtx = sharedAudioCtx;
   playTones(previewCtx, type, 3);
-  previewTimer = setTimeout(() => { try { previewCtx?.close(); } catch (e) {} previewCtx = null; }, 4000);
+  previewTimer = setTimeout(() => { previewTimer = null; }, 4000);
 }
 
 function onMusicFile(e) {
@@ -2392,10 +2407,19 @@ function startAlarmSound(a) {
     _pendingMusicAlarm = null;
   }
 
-  // ビープ/やさしい音/緊急音：AudioContext を作って playPattern でスケジューリング
+  // ビープ/やさしい音/緊急音
+  // sharedAudioCtx（試聴等のユーザー操作で resume 済み）を使い回す。
+  // なければ新規作成して resume() してから鳴らす。
   try {
-    firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-    playPattern(a.sound || 'beep');
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    firingCtx = sharedAudioCtx;
+    if (firingCtx.state === 'suspended') {
+      firingCtx.resume().then(() => playPattern(a.sound || 'beep'));
+    } else {
+      playPattern(a.sound || 'beep');
+    }
   } catch (e) { console.warn('[alarm] startAlarmSound error:', e); }
 }
 
@@ -2458,7 +2482,8 @@ function handleStopTap() {
 function stopAlarmSound() {
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
-  if (firingCtx) { try { firingCtx.close(); } catch (e) {} firingCtx = null; }
+  // firingCtx は sharedAudioCtx と同一なので close しない（次のアラームでも使い回す）
+  firingCtx = null;
 }
 
 function stopAlarm() {
