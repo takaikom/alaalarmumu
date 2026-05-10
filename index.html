@@ -2077,6 +2077,10 @@ function closeModal() { document.getElementById('alarm-sheet').classList.remove(
 // SAVE / DELETE / TOGGLE ALARM
 // ───────────────────────────────────────────
 function saveAlarm() {
+  // ユーザー操作時にこれを実行する必要がある
+  if (SoundManager.ctx && SoundManager.ctx.state === 'suspended') {
+      SoundManager.ctx.resume();
+  }
   const isClockMode = document.getElementById('time-clock-mode').style.display !== 'none';
   let h, m;
   if (isClockMode) { h = clockH; m = clockM; }
