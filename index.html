@@ -2078,8 +2078,12 @@ function closeModal() { document.getElementById('alarm-sheet').classList.remove(
 // ───────────────────────────────────────────
 function saveAlarm() {
   // ユーザー操作時にこれを実行する必要がある
-  if (SoundManager.ctx && SoundManager.ctx.state === 'suspended') {
+  try {
+    if (typeof SoundManager !== 'undefined' && SoundManager.ctx && SoundManager.ctx.state === 'suspended') {
       SoundManager.ctx.resume();
+    }
+  } catch (e) {
+    console.error("Audio resume failed:", e);
   }
   const isClockMode = document.getElementById('time-clock-mode').style.display !== 'none';
   let h, m;
