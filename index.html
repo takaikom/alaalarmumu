@@ -229,22 +229,60 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .time-kb-wrap{display:flex;align-items:center;gap:10px;}
 .time-spinners{display:flex;align-items:center;gap:6px;}
 .time-spin-unit{display:flex;align-items:center;gap:4px;}
-.time-digit-box{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);transition:border-color .15s;}
-.time-digit{width:52px;height:52px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;cursor:pointer;}
+.time-digit-box {
+  display: flex;
+  align-items: center;
+  /* 左右にパディングを追加して、中のボタンや数字が枠に密着するのを防ぐ */
+  padding: 0 4px;
+  border: 1.5px solid var(--border2);
+  border-radius: 10px;
+  background: var(--surface2);
+  transition: border-color .15s, background .15s;
+}
+.time-digit {
+  /* 枠線を消し、コンテナの背景（surface2）に馴染ませる */
+  width: 52px;
+  height: 52px;
+  border: none !important;
+  outline: none;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 32px;
+  color: var(--text);
+  text-align: center;
+  font-weight: 400;
+  -moz-appearance: textfield;
+  cursor: pointer;
+  /* 入力中も枠が出ないようにする */
+  box-shadow: none;
+}
 .time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
 .time-spin-col{display:flex;flex-direction:column;gap:2px;}
-.time-spin-btn{
-  width:36px;height:30px;
-  border:1px solid var(--border2);border-radius:6px;
-  background:var(--surface2);color:var(--text2);
-  font-size:15px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .1s,color .1s;user-select:none;
-  touch-action:manipulation;
-  /* スマホでも確実にタップできるサイズ */
-  min-width:36px;min-height:30px;
+.time-spin-btn {
+  width: 36px;
+  height: 24px; /* 高さを少し抑えてバランスを調整 */
+  /* ボタン自体の枠線を消す */
+  border: none;
+  border-radius: 6px;
+  background: transparent; /* 背景を透明にしてコンテナに合わせる */
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .1s, color .1s;
+  user-select: none;
+  touch-action: manipulation;
+  min-width: 36px;
 }
-.time-spin-btn:active{background:var(--surface3);color:var(--text);}
+
+/* ホバー・アクティブ時のみ色を付けて押しやすくする */
+.time-spin-btn:active {
+  background: var(--surface3);
+  color: var(--text);
+}
 .time-colon{font-family:var(--mono);font-size:26px;color:var(--text2);user-select:none;padding:0 1px;}
 .time-hint{font-size:11px;color:var(--text3);margin-top:5px;}
 .btn-mode-toggle{padding:7px 11px;border:1px solid var(--border2);border-radius:8px;background:var(--surface3);color:var(--text3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
