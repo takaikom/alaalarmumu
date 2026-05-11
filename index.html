@@ -229,8 +229,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .time-kb-wrap{display:flex;align-items:center;gap:10px;}
 .time-spinners{display:flex;align-items:center;gap:6px;}
 .time-spin-unit{display:flex;align-items:center;gap:4px;}
-.time-digit-box{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);transition:border-color .15s;padding:0 4px;}
-.time-digit-box:focus-within{border-color:var(--accent);}
+.time-digit-box{display:flex;align-items:center;border:1.5px solid var(--border2);border-radius:10px;background:var(--surface2);transition:border-color .15s;}
 .time-digit{width:52px;height:52px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:32px;color:var(--text);text-align:center;font-weight:400;-moz-appearance:textfield;cursor:pointer;}
 .time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
 .time-spin-col{display:flex;flex-direction:column;gap:2px;}
@@ -709,7 +708,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
             </div>
             <button class="btn-mode-toggle" onclick="toggleTimeMode()">🕐 時計</button>
           </div>
-          <div class="time-hint">▲▼で調整、または入力欄をタップして直接入力（時: 0〜23、分: 0〜59）</div>
         </div>
         <div id="time-clock-mode">
           <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
