@@ -728,7 +728,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
             <div class="time-spinners">
               <div class="time-spin-unit">
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00" inputmode="numeric" enterkeyhint="next">
+                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00" inputmode="numeric" enterkeyhint="done">
+                </div>
                 <div class="time-spin-col">
                   <button class="time-spin-btn" onclick="spinTime('h',1)">▲</button>
                   <button class="time-spin-btn" onclick="spinTime('h',-1)">▼</button>
@@ -737,7 +738,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
               <span class="time-colon">:</span>
               <div class="time-spin-unit">
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00" inputmode="numeric" enterkeyhint="done">
+                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00" inputmode="numeric" enterkeyhint="next">
+                </div>
                 <div class="time-spin-col">
                   <button class="time-spin-btn" onclick="spinTime('m',1)">▲</button>
                   <button class="time-spin-btn" onclick="spinTime('m',-1)">▼</button>
@@ -3378,7 +3380,8 @@ function renderPhaseList() {
                 onfocus="if(!this._clearing){this._clearing=true;this.select();}"
                 onblur="this._clearing=false;timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();renderPhaseList();"
                 oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();"
-                onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.blur();}">            <div class="phase-sec-spin-col">
+                onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.blur();}">
+            <div class="phase-sec-spin-col">
               <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},1)">▲</button>
               <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},-1)">▼</button>
             </div>
