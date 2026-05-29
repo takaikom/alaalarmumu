@@ -1071,6 +1071,8 @@ let timerRemain = 0;
 let timerInterval = null;
 let timerTotalElapsed = 0;
 let timerTotalSec = 0;
+let timerTickBaseTime = 0;   // 追加: 現フェーズ開始時のDate.now()
+let timerTickBaseSec = 0;    // 追加: 現フェーズ開始時のtimerRemain
 let phaseUndoStack = []; // {phase, index} の配列（最大5件）
 
 // ── 編集ロック状態（ユーザーごとに保存） ──
@@ -1438,7 +1440,13 @@ function init() {
   document.getElementById('gas-url-input').value = getGasUrl();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-  document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
+  // スリープ復帰時にタイマーを即時補正
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && timerState === 'running') {
+      timerTick();
+    }
+  });
+    document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
   const th = document.getElementById('t-h');
   const tm = document.getElementById('t-m');
   th.addEventListener('focus', function() { this.select(); });
@@ -3506,6 +3514,8 @@ function timerStartStop() {
     timerRemain = timerPhases[0].sec;
     timerState = 'running';
     announcePhase(0);
+    timerTickBaseTime = Date.now();          // 追加
+    timerTickBaseSec = timerPhases[0].sec;   // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else if (timerState === 'running') {
@@ -3514,6 +3524,8 @@ function timerStartStop() {
     document.getElementById('timer-start-btn').textContent = '▶ 再開';
   } else if (timerState === 'paused') {
     timerState = 'running';
+    timerTickBaseTime = Date.now();          // 追加
+    timerTickBaseSec = timerRemain;          // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   }
@@ -3522,19 +3534,33 @@ function timerStartStop() {
 }
 
 function timerTick() {
-  timerRemain--;
-  timerTotalElapsed++;
-  if (timerRemain <= 0) {
+  // Date.now() ベースで実際の経過秒数を計算（スリープ補正）
+  const now = Date.now();
+  const elapsed = Math.floor((now - timerTickBaseTime) / 1000);
+  let newRemain = timerTickBaseSec - elapsed;
+
+  // フェーズが残り時間を超過した場合（スリープ明けに複数秒スキップした場合も対応）
+  while (newRemain <= 0) {
+    timerTotalElapsed += timerRemain > 0 ? timerRemain : 1;
     timerPhaseIdx++;
     if (timerPhaseIdx >= timerPhases.length) {
       timerFinish(); return;
     }
-    timerRemain = timerPhases[timerPhaseIdx].sec;
+    newRemain += timerPhases[timerPhaseIdx].sec;
+    // 新フェーズ開始の基準をリセット
+    timerTickBaseTime = now - ((timerPhases[timerPhaseIdx].sec - newRemain) * 1000);
+    timerTickBaseSec = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
     renderPhaseList();
-  } else {
-    // カウントダウン音は常に（アナウンス中も含め）次のステップまで継続
+  }
+
+  const prevRemain = timerRemain;
+  timerRemain = newRemain;
+  timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0)
+                    + (timerPhases[timerPhaseIdx].sec - timerRemain);
+
+  if (prevRemain !== timerRemain && timerRemain > 0) {
     playCountdownTick();
   }
   timerUpdateDisplay();
@@ -3628,6 +3654,8 @@ function timerJumpToStep(idx) {
     timerRemain = timerPhases[idx].sec;
     timerState = 'running';
     announcePhase(idx);
+    timerTickBaseTime = Date.now();                // 追加
+    timerTickBaseSec = timerPhases[idx].sec;       // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else {
