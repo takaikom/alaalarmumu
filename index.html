@@ -8,6 +8,14 @@
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
         })(window,document,"clarity","script","【あなた専用のID】");
     </script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-90QQRPZ51C"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-90QQRPZ51C');
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1C1A17">
@@ -605,23 +613,16 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <!-- SETTINGS VIEW -->
 <div id="view-settings" class="view">
 
-  <!-- テーマ設定 -->
-  <div class="sec-label">テーマ・外観</div>
-  <div class="settings-card">
-    <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-      <div class="settings-row-title">カラーテーマ</div>
-      <div class="theme-opts">
-        <button class="theme-opt" data-theme-val="dark" onclick="setTheme('dark')">
-          <span class="theme-opt-icon">🌙</span>ダーク
-        </button>
-        <button class="theme-opt" data-theme-val="light" onclick="setTheme('light')">
-          <span class="theme-opt-icon">☀️</span>ライト
-        </button>
-        <button class="theme-opt" data-theme-val="system" onclick="setTheme('system')">
-          <span class="theme-opt-icon">📱</span>システム連動
-        </button>
-      </div>
-      <div class="settings-row-sub" id="theme-system-note" style="display:none;">スマホ・PCのダーク/ライトモード設定に自動で追従します</div>
+  <!-- ご利用にあたって -->
+  <div class="settings-card" style="margin-bottom:12px;">
+    <div class="settings-row" style="cursor:pointer;user-select:none;" onclick="(function(el){el.style.display=el.style.display==='none'?'':'none';})(document.getElementById('notice-body'))">
+      <div class="settings-row-title">⚠️ ご利用にあたって</div>
+      <div style="font-size:12px;color:var(--text3);" id="notice-toggle-icon">▼</div>
+    </div>
+    <div id="notice-body" style="display:none;padding:0 16px 14px;font-size:12px;color:var(--text2);line-height:1.8;">
+      このアプリは開発者が個人利用目的で開発したツールです。勝手に機能・仕様変更し、それに伴い不具合が発生したり、予告なく公開終了する可能性があります。<b>ご利用は自己責任でお願いします。</b><br>
+      データの保証はできません（データは開発者側にはありません）。大切な情報は<b>定期的にご自身でバックアップ</b>してください。<br>
+      困ったときは、開発者と個人的なつながりがある方は開発者に直接ご相談ください。<br>なお、使いやすさ向上のために簡単な操作ログ（個人データは含まず、匿名）を収集するかもしれません。
     </div>
   </div>
 
@@ -629,9 +630,19 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   <div class="sec-label">グループ・クラウド同期</div>
   <div class="settings-card">
     <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-      <div style="width:100%;">
-        <div class="settings-row-title">グループ</div>
-        <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
+      <div style="width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div>
+          <div class="settings-row-title">グループ</div>
+          <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:11px;color:var(--text3);">親モード</span>
+          <label class="sw" id="parent-mode-sw">
+            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
+            <div class="sw-track"></div>
+            <div class="sw-thumb"></div>
+          </label>
+        </div>
       </div>
       <div style="display:flex;gap:8px;width:100%;">
         <button class="settings-btn" style="flex:1;" onclick="openGroupSheet()">グループ・ユーザー管理</button>
@@ -871,20 +882,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
       <!-- 現在のグループのユーザー -->
       <div class="sec-label">ユーザー（現在のグループ）</div>
-      <!-- 親モード切り替え -->
-      <div class="settings-card" style="margin-bottom:10px;">
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-title">親モード</div>
-            <div class="settings-row-sub">オンにすると全ユーザーのタブを表示できます</div>
-          </div>
-          <label class="sw" id="parent-mode-sw">
-            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
-            <div class="sw-track"></div>
-            <div class="sw-thumb"></div>
-          </label>
-        </div>
-      </div>
       <div id="user-list-el" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <input type="text" id="new-user-input" class="form-input" style="flex:1;height:40px;font-size:14px;" placeholder="新しいユーザー名">
