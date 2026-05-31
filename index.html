@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
   <script type="text/javascript">
-        (function(c,l,a,r,i,t,y){
-            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window,document,"clarity","script","【あなた専用のID】");
-    </script>
+      (function(c,l,a,r,i,t,y){
+          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "wzo9p7jj06");
+  </script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-90QQRPZ51C"></script>
 <script>
@@ -613,16 +613,23 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <!-- SETTINGS VIEW -->
 <div id="view-settings" class="view">
 
-  <!-- ご利用にあたって -->
-  <div class="settings-card" style="margin-bottom:12px;">
-    <div class="settings-row" style="cursor:pointer;user-select:none;" onclick="(function(el){el.style.display=el.style.display==='none'?'':'none';})(document.getElementById('notice-body'))">
-      <div class="settings-row-title">⚠️ ご利用にあたって</div>
-      <div style="font-size:12px;color:var(--text3);" id="notice-toggle-icon">▼</div>
-    </div>
-    <div id="notice-body" style="display:none;padding:0 16px 14px;font-size:12px;color:var(--text2);line-height:1.8;">
-      このアプリは開発者が個人利用目的で開発したツールです。勝手に機能・仕様変更し、それに伴い不具合が発生したり、予告なく公開終了する可能性があります。<b>ご利用は自己責任でお願いします。</b><br>
-      データの保証はできません（データは開発者側にはありません）。大切な情報は<b>定期的にご自身でバックアップ</b>してください。<br>
-      困ったときは、開発者と個人的なつながりがある方は開発者に直接ご相談ください。<br>なお、使いやすさ向上のために簡単な操作ログ（個人データは含まず、匿名）を収集するかもしれません。
+  <!-- テーマ設定 -->
+  <div class="sec-label">テーマ・外観</div>
+  <div class="settings-card">
+    <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div class="settings-row-title">カラーテーマ</div>
+      <div class="theme-opts">
+        <button class="theme-opt" data-theme-val="dark" onclick="setTheme('dark')">
+          <span class="theme-opt-icon">🌙</span>ダーク
+        </button>
+        <button class="theme-opt" data-theme-val="light" onclick="setTheme('light')">
+          <span class="theme-opt-icon">☀️</span>ライト
+        </button>
+        <button class="theme-opt" data-theme-val="system" onclick="setTheme('system')">
+          <span class="theme-opt-icon">📱</span>システム連動
+        </button>
+      </div>
+      <div class="settings-row-sub" id="theme-system-note" style="display:none;">スマホ・PCのダーク/ライトモード設定に自動で追従します</div>
     </div>
   </div>
 
@@ -630,19 +637,9 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   <div class="sec-label">グループ・クラウド同期</div>
   <div class="settings-card">
     <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-      <div style="width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-        <div>
-          <div class="settings-row-title">グループ</div>
-          <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          <span style="font-size:11px;color:var(--text3);">親モード</span>
-          <label class="sw" id="parent-mode-sw">
-            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
-            <div class="sw-track"></div>
-            <div class="sw-thumb"></div>
-          </label>
-        </div>
+      <div style="width:100%;">
+        <div class="settings-row-title">グループ</div>
+        <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
       </div>
       <div style="display:flex;gap:8px;width:100%;">
         <button class="settings-btn" style="flex:1;" onclick="openGroupSheet()">グループ・ユーザー管理</button>
@@ -882,6 +879,20 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
       <!-- 現在のグループのユーザー -->
       <div class="sec-label">ユーザー（現在のグループ）</div>
+      <!-- 親モード切り替え -->
+      <div class="settings-card" style="margin-bottom:10px;">
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-title">親モード</div>
+            <div class="settings-row-sub">オンにすると全ユーザーのタブを表示できます</div>
+          </div>
+          <label class="sw" id="parent-mode-sw">
+            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
+            <div class="sw-track"></div>
+            <div class="sw-thumb"></div>
+          </label>
+        </div>
+      </div>
       <div id="user-list-el" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <input type="text" id="new-user-input" class="form-input" style="flex:1;height:40px;font-size:14px;" placeholder="新しいユーザー名">
@@ -1075,8 +1086,6 @@ let timerRemain = 0;
 let timerInterval = null;
 let timerTotalElapsed = 0;
 let timerTotalSec = 0;
-let timerTickBaseTime = 0;   // 追加: 現フェーズ開始時のDate.now()
-let timerTickBaseSec = 0;    // 追加: 現フェーズ開始時のtimerRemain
 let phaseUndoStack = []; // {phase, index} の配列（最大5件）
 
 // ── 編集ロック状態（ユーザーごとに保存） ──
@@ -1444,13 +1453,7 @@ function init() {
   document.getElementById('gas-url-input').value = getGasUrl();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-  // スリープ復帰時にタイマーを即時補正
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && timerState === 'running') {
-      timerTick();
-    }
-  });
-    document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
+  document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
   const th = document.getElementById('t-h');
   const tm = document.getElementById('t-m');
   th.addEventListener('focus', function() { this.select(); });
@@ -3518,8 +3521,6 @@ function timerStartStop() {
     timerRemain = timerPhases[0].sec;
     timerState = 'running';
     announcePhase(0);
-    timerTickBaseTime = Date.now();          // 追加
-    timerTickBaseSec = timerPhases[0].sec;   // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else if (timerState === 'running') {
@@ -3528,8 +3529,6 @@ function timerStartStop() {
     document.getElementById('timer-start-btn').textContent = '▶ 再開';
   } else if (timerState === 'paused') {
     timerState = 'running';
-    timerTickBaseTime = Date.now();          // 追加
-    timerTickBaseSec = timerRemain;          // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   }
@@ -3538,33 +3537,19 @@ function timerStartStop() {
 }
 
 function timerTick() {
-  // Date.now() ベースで実際の経過秒数を計算（スリープ補正）
-  const now = Date.now();
-  const elapsed = Math.floor((now - timerTickBaseTime) / 1000);
-  let newRemain = timerTickBaseSec - elapsed;
-
-  // フェーズが残り時間を超過した場合（スリープ明けに複数秒スキップした場合も対応）
-  while (newRemain <= 0) {
-    timerTotalElapsed += timerRemain > 0 ? timerRemain : 1;
+  timerRemain--;
+  timerTotalElapsed++;
+  if (timerRemain <= 0) {
     timerPhaseIdx++;
     if (timerPhaseIdx >= timerPhases.length) {
       timerFinish(); return;
     }
-    newRemain += timerPhases[timerPhaseIdx].sec;
-    // 新フェーズ開始の基準をリセット
-    timerTickBaseTime = now - ((timerPhases[timerPhaseIdx].sec - newRemain) * 1000);
-    timerTickBaseSec = timerPhases[timerPhaseIdx].sec;
+    timerRemain = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
     renderPhaseList();
-  }
-
-  const prevRemain = timerRemain;
-  timerRemain = newRemain;
-  timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0)
-                    + (timerPhases[timerPhaseIdx].sec - timerRemain);
-
-  if (prevRemain !== timerRemain && timerRemain > 0) {
+  } else {
+    // カウントダウン音は常に（アナウンス中も含め）次のステップまで継続
     playCountdownTick();
   }
   timerUpdateDisplay();
@@ -3658,8 +3643,6 @@ function timerJumpToStep(idx) {
     timerRemain = timerPhases[idx].sec;
     timerState = 'running';
     announcePhase(idx);
-    timerTickBaseTime = Date.now();                // 追加
-    timerTickBaseSec = timerPhases[idx].sec;       // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else {
