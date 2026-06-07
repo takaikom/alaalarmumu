@@ -394,7 +394,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .phase-list-wrap{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
 .phase-list{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;}
 .phase-move-panel{display:flex;flex-direction:column;gap:6px;flex-shrink:0;padding-top:2px;}
-.phase-move-panel-btn{width:32px;height:32px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);color:var(--text2);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;touch-action:manipulation;}
+.phase-move-panel-btn{width:26px;height:26px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text2);font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;touch-action:manipulation;}
 .phase-move-panel-btn:active{background:var(--surface3);color:var(--text);}
 .phase-move-panel-btn:disabled{opacity:.25;cursor:default;}
 .phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;transition:border-color .12s;touch-action:pan-y;}
@@ -581,14 +581,14 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <!-- ── フェーズ編集 ── -->
     <div class="sec-label-row" style="margin-top:16px;">
       <div class="sec-label">ステップの設定</div>
-      <button class="lock-btn" id="phase-lock-btn" onclick="togglePhaseLock()" title="編集ロック">🔓</button>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button class="phase-move-panel-btn" id="phase-move-up-btn" onclick="moveSelectedPhase(-1)" title="上へ移動" disabled>▲</button>
+        <button class="phase-move-panel-btn" id="phase-move-down-btn" onclick="moveSelectedPhase(1)" title="下へ移動" disabled>▼</button>
+        <button class="lock-btn" id="phase-lock-btn" onclick="togglePhaseLock()" title="編集ロック">🔓</button>
+      </div>
     </div>
     <div class="phase-list-wrap">
       <div id="phase-list" class="phase-list"></div>
-      <div class="phase-move-panel" id="phase-move-panel">
-        <button class="phase-move-panel-btn" id="phase-move-up-btn" onclick="moveSelectedPhase(-1)" title="上へ移動" disabled>▲</button>
-        <button class="phase-move-panel-btn" id="phase-move-down-btn" onclick="moveSelectedPhase(1)" title="下へ移動" disabled>▼</button>
-      </div>
     </div>
     <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
 
@@ -1068,6 +1068,13 @@ function _unlockAudioCtx() {
   document.addEventListener('touchstart', unlock, true);
   document.addEventListener('mousedown', unlock, true);
   document.addEventListener('keydown', unlock, true);
+
+  // iOS: バックグラウンドから復帰したとき AudioContext が suspended に戻るので resume する
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && _sharedAudioCtx) {
+      _sharedAudioCtx.resume().catch(() => {});
+    }
+  });
 }let currentTimerPresetId = null;
 let timerPhases = [];
 let timerState = 'idle';
@@ -3150,7 +3157,7 @@ function purgeAllTimerPresets() {
 }
 
 function addTimerPreset() {
-  const id = 'tp' + Date.now();
+  const id = 'tp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   timerPresets.push({ id, name: '', phases: [] });
   saveData();
   renderTimerList();
@@ -3202,7 +3209,12 @@ function openTimerCopyModal(presetId) {
   const curUid = getCurrentUserId();
 
   // グループ×ユーザーのセレクタHTMLを生成
-  let rows = '';
+  // 先頭に「このユーザー（自分自身）に複製」を追加
+  const selfLabel = '📋 このユーザーに複製（自分自身）';
+  let rows = `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--accent);background:var(--accent-l);margin-bottom:6px;cursor:pointer;">
+    <input type="radio" name="tcopy-dest" value="${esc(curGid)}|${esc(curUid)}|self" style="accent-color:var(--accent);">
+    <span style="font-size:13px;color:var(--accent);font-weight:500;">${selfLabel}</span>
+  </label>`;
   groups.forEach(g => {
     let gData;
     if (g.id === curGid) {
@@ -3212,7 +3224,7 @@ function openTimerCopyModal(presetId) {
     }
     const users = gData.users || [];
     users.forEach(u => {
-      // 自分自身はスキップ
+      // 自分自身はスキップ（先頭に別途追加済み）
       if (g.id === curGid && u.id === curUid) return;
       const label = groups.length > 1 ? `${esc(g.name)} › ${esc(u.name)}` : esc(u.name);
       rows += `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);margin-bottom:6px;cursor:pointer;">
@@ -3250,21 +3262,33 @@ async function executeTimerCopy() {
   const checked = document.querySelector('input[name="tcopy-dest"]:checked');
   if (!checked) { showSnack('コピー先を選択してください'); return; }
 
-  const [destGid, destUid] = checked.value.split('|');
+  const parts = checked.value.split('|');
+  const [destGid, destUid, selfFlag] = parts;
 
   // コピーするプリセット（新しいIDを付与して完全独立化）
   const newPreset = JSON.parse(JSON.stringify(preset));
-  newPreset.id = 'tp' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+  newPreset.id = 'tp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  newPreset.name = (preset.name || 'タイマー') + ' のコピー';
   // フェーズ内にIDがあれば全て再発行
   if (Array.isArray(newPreset.phases)) {
     newPreset.phases = newPreset.phases.map(ph => {
       const p2 = Object.assign({}, ph);
-      if (p2.id) p2.id = 'ph' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+      if (p2.id) p2.id = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       return p2;
     });
   }
 
   const curGid = getCurrentGroupId();
+
+  // 自分自身への複製
+  if (selfFlag === 'self') {
+    timerPresets.push(newPreset);
+    saveData();
+    renderTimerList();
+    closeTimerCopyModal();
+    showSnack(`「${newPreset.name}」を追加しました`);
+    return;
+  }
 
   if (destGid === curGid) {
     // 同グループ内の別ユーザーへ
@@ -3409,6 +3433,7 @@ function renderPhaseList() {
       <div class="phase-item-inner" id="phase-inner-${i}" style="display:flex;flex-direction:column;">
         <div class="phase-item-top">
             <span class="phase-num">${i + 1}.</span>
+            ${timerState !== 'idle' ? `<button class="phase-skip-btn" onclick="event.stopPropagation();timerJumpToStep(${i})" title="このステップへジャンプ">→</button>` : ''}
             <textarea class="phase-announce-inline"
               placeholder="アナウンス（例: 前歯を磨きます）"
               enterkeyhint="next"
@@ -3431,7 +3456,6 @@ function renderPhaseList() {
             </div>
             <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
           </div>
-          ${timerState !== 'idle' ? `<button class="phase-skip-btn" onclick="event.stopPropagation();timerJumpToStep(${i})">→</button>` : ''}
           <button class="phase-hover-del" onclick="event.stopPropagation();deletePhase(${i})" title="削除">✕</button>
         </div>
       </div>
@@ -3549,6 +3573,10 @@ function fmtCountdown(s) {
 function timerStartStop() {
   if (timerState === 'idle') {
     if (!timerPhases.length) { showSnack('ステップを追加してください'); return; }
+    // iOS: スタートボタンのタップ操作で AudioContext を確実に resume
+    if (_sharedAudioCtx && _sharedAudioCtx.state === 'suspended') {
+      _sharedAudioCtx.resume().catch(() => {});
+    }
     timerPhaseIdx = 0;
     timerTotalElapsed = 0;
     timerTotalSec = timerPhases.reduce((s, p) => s + p.sec, 0);
@@ -3582,14 +3610,15 @@ function timerTick() {
 
   // フェーズが残り時間を超過した場合（スリープ明けに複数秒スキップした場合も対応）
   while (newRemain <= 0) {
-    timerTotalElapsed += timerRemain > 0 ? timerRemain : 1;
+    const overSec = -newRemain; // 超過秒数
+    timerTotalElapsed += timerPhases[timerPhaseIdx].sec;
     timerPhaseIdx++;
     if (timerPhaseIdx >= timerPhases.length) {
       timerFinish(); return;
     }
-    newRemain += timerPhases[timerPhaseIdx].sec;
-    // 新フェーズ開始の基準をリセット
-    timerTickBaseTime = now - ((timerPhases[timerPhaseIdx].sec - newRemain) * 1000);
+    newRemain = timerPhases[timerPhaseIdx].sec - overSec;
+    // 新フェーズの基準時刻を「今から newRemain 秒前」ではなく正確に計算
+    timerTickBaseTime = now - (timerPhases[timerPhaseIdx].sec - newRemain) * 1000;
     timerTickBaseSec = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
@@ -3667,8 +3696,10 @@ function timerSkipNext() {
   timerPhaseIdx++;
   if (timerPhaseIdx >= timerPhases.length) { timerFinish(); return; }
   timerRemain = timerPhases[timerPhaseIdx].sec;
-  // totalElapsedを調整
   timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0);
+  // ベース時刻をリセット（次のtimerTick()が古い経過秒で上書きしないよう）
+  timerTickBaseTime = Date.now();
+  timerTickBaseSec = timerRemain;
   playBeep('phase');
   announcePhase(timerPhaseIdx);
   timerUpdateDisplay();
@@ -3680,6 +3711,9 @@ function timerSkipPrev() {
   if (timerPhaseIdx > 0) timerPhaseIdx--;
   timerRemain = timerPhases[timerPhaseIdx].sec;
   timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0);
+  // ベース時刻をリセット
+  timerTickBaseTime = Date.now();
+  timerTickBaseSec = timerRemain;
   announcePhase(timerPhaseIdx);
   timerUpdateDisplay();
   renderPhaseList();
@@ -3703,6 +3737,8 @@ function timerJumpToStep(idx) {
     timerPhaseIdx = idx;
     timerRemain = timerPhases[idx].sec;
     timerTotalElapsed = timerPhases.slice(0, idx).reduce((s, p) => s + p.sec, 0);
+    timerTickBaseTime = Date.now();
+    timerTickBaseSec = timerRemain;
     announcePhase(idx);
   }
   timerUpdateDisplay();
@@ -3834,14 +3870,14 @@ function announcePhase(idx) {
 function playCountdownTick() {
   if (!document.getElementById('announce-tick')?.checked) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _getSharedAudioCtx();
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return; }
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.connect(g); g.connect(ctx.destination);
     o.frequency.value = 660; o.type = 'sine';
     g.gain.setValueAtTime(.12, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .08);
     o.start(ctx.currentTime); o.stop(ctx.currentTime + .09);
-    setTimeout(() => ctx.close(), 200);
   } catch (e) {}
 }
 
@@ -3872,7 +3908,8 @@ function speak(text) {
 function playBeep(type = 'phase') {
   if (!document.getElementById('announce-beep')?.checked) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _getSharedAudioCtx();
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return; }
     if (type === 'finish') {
       [523, 659, 784, 1047].forEach((f, i) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -3883,7 +3920,6 @@ function playBeep(type = 'phase') {
         g.gain.exponentialRampToValueAtTime(.001, t + .25);
         o.start(t); o.stop(t + .26);
       });
-      setTimeout(() => ctx.close(), 1200);
     } else {
       [880, 1100].forEach((f, i) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -3894,7 +3930,6 @@ function playBeep(type = 'phase') {
         g.gain.exponentialRampToValueAtTime(.001, t + .15);
         o.start(t); o.stop(t + .16);
       });
-      setTimeout(() => ctx.close(), 600);
     }
   } catch (e) {}
 }
