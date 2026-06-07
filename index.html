@@ -3887,22 +3887,12 @@ function speak(text) {
   window.speechSynthesis.cancel();
   const _doSpeak = () => {
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'ja-JP'; utter.rate = 0.95; utter.pitch = 1.1;
-    const voices = window.speechSynthesis.getVoices();
-    const jaVoice = voices.find(v => v.lang.startsWith('ja'));
-    if (jaVoice) utter.voice = jaVoice;
+    utter.lang = 'ja-JP';
+    // voice・rate・pitch は指定しない → 本体のTTS設定をそのまま使う
     window.speechSynthesis.speak(utter);
   };
   // Android Chrome: cancel() 直後に speak() すると無音になるバグ対策（50ms待機）
-  // voices が空の場合は onvoiceschanged を待つ
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      window.speechSynthesis.onvoiceschanged = null;
-      setTimeout(_doSpeak, 50);
-    };
-  } else {
-    setTimeout(_doSpeak, 50);
-  }
+  setTimeout(_doSpeak, 50);
 }
 
 function playBeep(type = 'phase') {
