@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
   <script type="text/javascript">
-      (function(c,l,a,r,i,t,y){
-          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-      })(window, document, "clarity", "script", "wzo9p7jj06");
-  </script>
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window,document,"clarity","script","【あなた専用のID】");
+    </script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-90QQRPZ51C"></script>
 <script>
@@ -71,7 +71,8 @@
 .theme-opt:active{background:var(--accent-l);}
 .theme-opt-icon{font-size:20px;display:block;margin-bottom:4px;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;font-size:14px;}
+html{overflow-x:hidden;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;font-size:14px;max-width:100vw;}
 
 /* HEADER */
 .app-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
@@ -140,7 +141,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .alarm-card.firing{border-color:var(--accent);animation:cpulse 1s ease-in-out infinite alternate;}
 @keyframes cpulse{from{background:var(--surface);}to{background:rgba(216,90,48,.1);}}
 .alarm-card-left{flex:1;min-width:0;}
-.alarm-time-big{font-family:var(--mono);font-size:34px;font-weight:400;letter-spacing:-.02em;line-height:1;margin-bottom:4px;}
+.alarm-time-big{font-family:var(--mono);font-size:clamp(26px,9vw,34px);font-weight:400;letter-spacing:-.02em;line-height:1;margin-bottom:4px;}
 .alarm-subtitle{font-size:12px;color:var(--text2);margin-bottom:4px;}
 .alarm-tags{display:flex;gap:4px;flex-wrap:wrap;}
 .atag{font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid var(--border2);color:var(--text3);}
@@ -241,8 +242,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .form-input::placeholder{color:var(--text3);}
 
 /* TIME INPUT */
-.time-kb-wrap{display:flex;align-items:center;gap:10px;}
-.time-spinners{display:flex;align-items:center;gap:6px;}
+.time-kb-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.time-spinners{display:flex;align-items:center;gap:4px;flex-shrink:0;}
 .time-spin-unit{display:flex;align-items:center;gap:4px;}
 .time-digit-box {
   display: flex;
@@ -256,13 +257,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 }
 .time-digit {
   /* 枠線を消し、コンテナの背景（surface2）に馴染ませる */
-  width: 52px;
-  height: 52px;
+  width: clamp(40px, 12vw, 52px);
+  height: clamp(40px, 12vw, 52px);
   border: none !important;
   outline: none;
   background: transparent;
   font-family: var(--mono);
-  font-size: 32px;
+  font-size: clamp(22px, 7vw, 32px);
   color: var(--text);
   text-align: center;
   font-weight: 400;
@@ -274,7 +275,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .time-digit::-webkit-outer-spin-button,.time-digit::-webkit-inner-spin-button{-webkit-appearance:none;}
 .time-spin-col{display:flex;flex-direction:column;gap:2px;}
 .time-spin-btn {
-  width: 36px;
+  width: clamp(28px, 8vw, 36px);
   height: 24px; /* 高さを少し抑えてバランスを調整 */
   /* ボタン自体の枠線を消す */
   border: none;
@@ -290,7 +291,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   transition: background .1s, color .1s;
   user-select: none;
   touch-action: manipulation;
-  min-width: 36px;
+  min-width: 28px;
 }
 
 /* ホバー・アクティブ時のみ色を付けて押しやすくする */
@@ -362,7 +363,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 /* FIRING */
 #firing-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;-webkit-tap-highlight-color:transparent;}
 #firing-overlay.open{display:flex;pointer-events:auto;}
-.firing-time{font-family:var(--mono);font-size:80px;font-weight:400;color:var(--accent);line-height:1;}
+.firing-time{font-family:var(--mono);font-size:clamp(52px,20vw,80px);font-weight:400;color:var(--accent);line-height:1;}
 .firing-label{font-size:18px;color:var(--text2);}
 .btn-stop{margin-top:20px;padding:20px 72px;border-radius:14px;border:none;background:var(--red);color:#fff;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;animation:breathe 1.4s ease-in-out infinite;position:relative;z-index:501;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 @keyframes breathe{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
@@ -391,15 +392,15 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 /* TIMER - フェーズ編集 */
 .phase-list-wrap{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
-.phase-list{flex:1;display:flex;flex-direction:column;gap:6px;}
+.phase-list{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;}
 .phase-move-panel{display:flex;flex-direction:column;gap:6px;flex-shrink:0;padding-top:2px;}
 .phase-move-panel-btn{width:32px;height:32px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);color:var(--text2);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;user-select:none;touch-action:manipulation;}
 .phase-move-panel-btn:active{background:var(--surface3);color:var(--text);}
 .phase-move-panel-btn:disabled{opacity:.25;cursor:default;}
-.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;transition:border-color .12s;}
+.phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;transition:border-color .12s;touch-action:pan-y;}
 .phase-item.phase-selected{border-color:var(--accent);background:rgba(216,90,48,.04);}
 .phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
-.phase-item-top{display:flex;align-items:center;gap:6px;padding:8px 10px;}
+.phase-item-top{display:flex;align-items:center;gap:4px;padding:8px 10px;flex-wrap:wrap;}
 .phase-num{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;min-width:18px;}
 .phase-drag{display:none;}
 /* PC用ホバー削除ボタン */
@@ -411,11 +412,11 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .phase-undo-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text2);margin-bottom:4px;}
 .phase-undo-btn{padding:4px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);color:var(--accent);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;}
 .phase-undo-btn:active{background:var(--accent-l);}
-.phase-announce-inline{flex:1;min-width:0;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--font);font-size:13px;color:var(--text);padding:4px 8px;outline:none;height:30px;}
+.phase-announce-inline{flex:1;min-width:80px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--font);font-size:13px;color:var(--text);padding:4px 8px;outline:none;min-height:30px;resize:none;overflow:hidden;line-height:1.5;word-break:break-all;}
 .phase-announce-inline:focus{border-color:var(--accent);background:var(--surface3);}
 .phase-announce-inline::placeholder{color:var(--text3);}
 .phase-interval-wrap{display:flex;align-items:center;gap:3px;flex-shrink:0;}
-.phase-sec-input{width:46px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--mono);font-size:14px;color:var(--text);text-align:center;padding:4px 0;outline:none;-moz-appearance:textfield;}
+.phase-sec-input{width:clamp(38px,11vw,46px);border:1px solid var(--border2);border-radius:7px;background:var(--surface2);font-family:var(--mono);font-size:14px;color:var(--text);text-align:center;padding:4px 0;outline:none;-moz-appearance:textfield;}
 .phase-sec-input::-webkit-outer-spin-button,.phase-sec-input::-webkit-inner-spin-button{-webkit-appearance:none;}
 .phase-sec-input:focus{border-color:var(--accent);}
 .phase-sep{color:var(--text3);font-size:12px;flex-shrink:0;}
@@ -444,7 +445,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-display-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px 20px 20px;text-align:center;}
 .timer-phase-name{font-size:16px;font-weight:700;color:var(--text);min-height:24px;margin-bottom:4px;transition:color .3s;}
 .timer-phase-progress{font-size:11px;color:var(--text3);margin-bottom:10px;min-height:16px;}
-.timer-time{font-family:var(--mono);font-size:72px;font-weight:400;letter-spacing:-.02em;color:var(--accent);line-height:1;margin-bottom:16px;transition:color .3s;}
+.timer-time{font-family:var(--mono);font-size:clamp(48px,15vw,72px);font-weight:400;letter-spacing:-.02em;color:var(--accent);line-height:1;margin-bottom:16px;transition:color .3s;}
 .timer-time.warning{color:var(--red);}
 .timer-total-bar-wrap{height:6px;background:var(--surface3);border-radius:99px;overflow:hidden;margin-bottom:8px;}
 .timer-total-bar{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width .5s linear,background .3s;}
@@ -459,7 +460,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-btn.secondary:active{background:var(--surface3);}
 
 /* タイマー詳細ビューのback btn */
-.back-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;position:sticky;top:134px;z-index:40;background:var(--bg);padding:6px 0 6px;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;}
+.back-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;position:sticky;top:var(--back-row-top,134px);z-index:40;background:var(--bg);padding:6px 0 6px;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;}
 .back-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .back-btn:active{background:var(--surface3);}
 .timer-detail-title{font-size:16px;font-weight:700;flex:1;cursor:pointer;}
@@ -613,23 +614,16 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <!-- SETTINGS VIEW -->
 <div id="view-settings" class="view">
 
-  <!-- テーマ設定 -->
-  <div class="sec-label">テーマ・外観</div>
-  <div class="settings-card">
-    <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-      <div class="settings-row-title">カラーテーマ</div>
-      <div class="theme-opts">
-        <button class="theme-opt" data-theme-val="dark" onclick="setTheme('dark')">
-          <span class="theme-opt-icon">🌙</span>ダーク
-        </button>
-        <button class="theme-opt" data-theme-val="light" onclick="setTheme('light')">
-          <span class="theme-opt-icon">☀️</span>ライト
-        </button>
-        <button class="theme-opt" data-theme-val="system" onclick="setTheme('system')">
-          <span class="theme-opt-icon">📱</span>システム連動
-        </button>
-      </div>
-      <div class="settings-row-sub" id="theme-system-note" style="display:none;">スマホ・PCのダーク/ライトモード設定に自動で追従します</div>
+  <!-- ご利用にあたって -->
+  <div class="settings-card" style="margin-bottom:12px;">
+    <div class="settings-row" style="cursor:pointer;user-select:none;" onclick="(function(el){el.style.display=el.style.display==='none'?'':'none';})(document.getElementById('notice-body'))">
+      <div class="settings-row-title">⚠️ ご利用にあたって</div>
+      <div style="font-size:12px;color:var(--text3);" id="notice-toggle-icon">▼</div>
+    </div>
+    <div id="notice-body" style="display:none;padding:0 16px 14px;font-size:12px;color:var(--text2);line-height:1.8;">
+      このアプリは開発者が個人利用目的で開発したツールです。勝手に機能・仕様変更し、それに伴い不具合が発生したり、予告なく公開終了する可能性があります。<b>ご利用は自己責任でお願いします。</b><br>
+      データの保証はできません（データは開発者側にはありません）。大切な情報は<b>定期的にご自身でバックアップ</b>してください。<br>
+      困ったときは、開発者と個人的なつながりがある方は開発者に直接ご相談ください。<br>なお、使いやすさ向上のために簡単な操作ログ（個人データは含まず、匿名）を収集するかもしれません。
     </div>
   </div>
 
@@ -637,9 +631,19 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   <div class="sec-label">グループ・クラウド同期</div>
   <div class="settings-card">
     <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-      <div style="width:100%;">
-        <div class="settings-row-title">グループ</div>
-        <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
+      <div style="width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div>
+          <div class="settings-row-title">グループ</div>
+          <div class="settings-row-sub" id="gas-group-name-disp">（グループ未設定）</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:11px;color:var(--text3);">親モード</span>
+          <label class="sw" id="parent-mode-sw">
+            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
+            <div class="sw-track"></div>
+            <div class="sw-thumb"></div>
+          </label>
+        </div>
       </div>
       <div style="display:flex;gap:8px;width:100%;">
         <button class="settings-btn" style="flex:1;" onclick="openGroupSheet()">グループ・ユーザー管理</button>
@@ -879,20 +883,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
       <!-- 現在のグループのユーザー -->
       <div class="sec-label">ユーザー（現在のグループ）</div>
-      <!-- 親モード切り替え -->
-      <div class="settings-card" style="margin-bottom:10px;">
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-title">親モード</div>
-            <div class="settings-row-sub">オンにすると全ユーザーのタブを表示できます</div>
-          </div>
-          <label class="sw" id="parent-mode-sw">
-            <input type="checkbox" id="parent-mode-chk" onchange="toggleParentMode(this.checked)">
-            <div class="sw-track"></div>
-            <div class="sw-thumb"></div>
-          </label>
-        </div>
-      </div>
       <div id="user-list-el" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <input type="text" id="new-user-input" class="form-input" style="flex:1;height:40px;font-size:14px;" placeholder="新しいユーザー名">
@@ -1086,6 +1076,8 @@ let timerRemain = 0;
 let timerInterval = null;
 let timerTotalElapsed = 0;
 let timerTotalSec = 0;
+let timerTickBaseTime = 0;   // 追加: 現フェーズ開始時のDate.now()
+let timerTickBaseSec = 0;    // 追加: 現フェーズ開始時のtimerRemain
 let phaseUndoStack = []; // {phase, index} の配列（最大5件）
 
 // ── 編集ロック状態（ユーザーごとに保存） ──
@@ -1450,10 +1442,17 @@ function init() {
   renderTimerList();
   renderGroupName();
   renderUserTabsWrap();
+  updateBackRowTop();
   document.getElementById('gas-url-input').value = getGasUrl();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-  document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
+  // スリープ復帰時にタイマーを即時補正
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && timerState === 'running') {
+      timerTick();
+    }
+  });
+    document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
   const th = document.getElementById('t-h');
   const tm = document.getElementById('t-m');
   th.addEventListener('focus', function() { this.select(); });
@@ -1481,6 +1480,18 @@ function renderGroupName() {
   if (gasInput) gasInput.value = getGasUrl();
   updateHeaderSyncBtns();
   renderUserTabsWrap();
+}
+
+// back-row の sticky top をヘッダー実高さに合わせて更新
+function updateBackRowTop() {
+  const header = document.querySelector('.app-header');
+  const userTabs = document.getElementById('user-tabs-wrap');
+  const tabs = document.querySelector('.tabs');
+  const h1 = header ? header.getBoundingClientRect().height : 53;
+  const h2 = userTabs ? userTabs.getBoundingClientRect().height : 40;
+  const h3 = tabs ? tabs.getBoundingClientRect().height : 40;
+  const total = Math.round(h1 + h2 + h3);
+  document.documentElement.style.setProperty('--back-row-top', total + 'px');
 }
 
 function updateHeaderSyncBtns() {
@@ -1839,6 +1850,7 @@ function renderUserTabsWrap() {
   }
 
   requestAnimationFrame(() => { wrap.scrollLeft = prevScroll; });
+  updateBackRowTop();
 }
 
 function showAddUserOverlay() {
@@ -2022,18 +2034,25 @@ function initSwipeDelete(id) {
   const card = document.getElementById('acard-' + id);
   const delEl = document.getElementById('adel-' + id);
   if (!card || !delEl) return;
-  let startX = 0, curX = 0, swiping = false;
+  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
   const THRESHOLD = 80;
 
   card.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
     curX = 0;
-    swiping = true;
+    swiping = true; dirLocked = false; isHoriz = false;
   }, { passive: true });
 
   card.addEventListener('touchmove', e => {
     if (!swiping) return;
     const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dirLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      dirLocked = true;
+      isHoriz = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!dirLocked || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     curX = Math.max(dx, -THRESHOLD - 20);
     card.style.transform = `translateX(${curX}px)`;
@@ -2042,7 +2061,7 @@ function initSwipeDelete(id) {
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (getAlarmLocked()) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (getAlarmLocked() || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (-curX >= THRESHOLD) {
       card.style.transform = `translateX(-100%)`;
       card.style.transition = 'transform .25s ease';
@@ -3058,17 +3077,24 @@ function initTimerSwipeDelete(id) {
   const card = document.getElementById('tcard-' + id);
   const delEl = document.getElementById('tdel-' + id);
   if (!card || !delEl) return;
-  let startX = 0, curX = 0, swiping = false;
+  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
   const THRESHOLD = 80;
 
   card.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
-    curX = 0; swiping = true;
+    startY = e.touches[0].clientY;
+    curX = 0; swiping = true; dirLocked = false; isHoriz = false;
   }, { passive: true });
 
   card.addEventListener('touchmove', e => {
     if (!swiping) return;
     const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dirLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      dirLocked = true;
+      isHoriz = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!dirLocked || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     curX = Math.max(dx, -THRESHOLD - 20);
     card.style.transform = `translateX(${curX}px)`;
@@ -3077,7 +3103,7 @@ function initTimerSwipeDelete(id) {
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (getTimerLocked()) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (getTimerLocked() || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
     if (-curX >= THRESHOLD) {
       card.style.transform = `translateX(-100%)`;
       card.style.transition = 'transform .25s ease';
@@ -3309,6 +3335,7 @@ function openTimerDetail(id) {
   }
   document.getElementById('timer-list-view').style.display = 'none';
   document.getElementById('timer-detail-view').style.display = '';
+  updateBackRowTop();
   // フェーズロックをリセット
   phaseLocked = false;
   const plBtn = document.getElementById('phase-lock-btn');
@@ -3382,12 +3409,14 @@ function renderPhaseList() {
       <div class="phase-item-inner" id="phase-inner-${i}" style="display:flex;flex-direction:column;">
         <div class="phase-item-top">
             <span class="phase-num">${i + 1}.</span>
-            <input class="phase-announce-inline" value="${esc(p.announce || '')}"
+            <textarea class="phase-announce-inline"
               placeholder="アナウンス（例: 前歯を磨きます）"
               enterkeyhint="next"
+              rows="1"
               onclick="event.stopPropagation();"
-              oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();"
-              onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.closest('.phase-item-top').querySelector('.phase-sec-input').focus();}">
+              oninput="timerPhases[${i}].announce=this.value;saveCurrentPresetPhases();this.style.height='auto';this.style.height=this.scrollHeight+'px';"
+              onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.closest('.phase-item-top').querySelector('.phase-sec-input').focus();}
+">${esc(p.announce || '')}</textarea>
             <div class="phase-interval-wrap">
               <input class="phase-sec-input" type="number" min="1" max="9999" value="${p.sec}"
                 inputmode="numeric" enterkeyhint="done"
@@ -3410,6 +3439,11 @@ function renderPhaseList() {
   }).join('');
 
   el.innerHTML = undoHtml + phasesHtml;
+  // textarea の高さを内容に合わせて初期化
+  el.querySelectorAll('.phase-announce-inline').forEach(ta => {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  });
   updateMovePanel();
   initPhaseSwipe();
   // ロック状態を再適用
@@ -3521,6 +3555,8 @@ function timerStartStop() {
     timerRemain = timerPhases[0].sec;
     timerState = 'running';
     announcePhase(0);
+    timerTickBaseTime = Date.now();          // 追加
+    timerTickBaseSec = timerPhases[0].sec;   // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else if (timerState === 'running') {
@@ -3529,6 +3565,8 @@ function timerStartStop() {
     document.getElementById('timer-start-btn').textContent = '▶ 再開';
   } else if (timerState === 'paused') {
     timerState = 'running';
+    timerTickBaseTime = Date.now();          // 追加
+    timerTickBaseSec = timerRemain;          // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   }
@@ -3537,19 +3575,33 @@ function timerStartStop() {
 }
 
 function timerTick() {
-  timerRemain--;
-  timerTotalElapsed++;
-  if (timerRemain <= 0) {
+  // Date.now() ベースで実際の経過秒数を計算（スリープ補正）
+  const now = Date.now();
+  const elapsed = Math.floor((now - timerTickBaseTime) / 1000);
+  let newRemain = timerTickBaseSec - elapsed;
+
+  // フェーズが残り時間を超過した場合（スリープ明けに複数秒スキップした場合も対応）
+  while (newRemain <= 0) {
+    timerTotalElapsed += timerRemain > 0 ? timerRemain : 1;
     timerPhaseIdx++;
     if (timerPhaseIdx >= timerPhases.length) {
       timerFinish(); return;
     }
-    timerRemain = timerPhases[timerPhaseIdx].sec;
+    newRemain += timerPhases[timerPhaseIdx].sec;
+    // 新フェーズ開始の基準をリセット
+    timerTickBaseTime = now - ((timerPhases[timerPhaseIdx].sec - newRemain) * 1000);
+    timerTickBaseSec = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
     renderPhaseList();
-  } else {
-    // カウントダウン音は常に（アナウンス中も含め）次のステップまで継続
+  }
+
+  const prevRemain = timerRemain;
+  timerRemain = newRemain;
+  timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0)
+                    + (timerPhases[timerPhaseIdx].sec - timerRemain);
+
+  if (prevRemain !== timerRemain && timerRemain > 0) {
     playCountdownTick();
   }
   timerUpdateDisplay();
@@ -3643,6 +3695,8 @@ function timerJumpToStep(idx) {
     timerRemain = timerPhases[idx].sec;
     timerState = 'running';
     announcePhase(idx);
+    timerTickBaseTime = Date.now();                // 追加
+    timerTickBaseSec = timerPhases[idx].sec;       // 追加
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else {
@@ -3661,17 +3715,25 @@ function initPhaseSwipe() {
     const inner = document.getElementById('phase-inner-' + i);
     const delEl = document.getElementById('psdel-' + i);
     if (!inner || !delEl) return;
-    let startX = 0, curX = 0, swiping = false;
+    let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
     const THRESHOLD = 72;
 
     inner.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX;
-      curX = 0; swiping = true;
+      startY = e.touches[0].clientY;
+      curX = 0; swiping = true; dirLocked = false; isHoriz = false;
     }, { passive: true });
 
     inner.addEventListener('touchmove', e => {
       if (!swiping) return;
       const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      // 方向が確定するまで待つ（8px移動後に判定）
+      if (!dirLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        dirLocked = true;
+        isHoriz = Math.abs(dx) > Math.abs(dy);
+      }
+      if (!dirLocked || !isHoriz) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
       if (dx > 0) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
       curX = Math.max(dx, -THRESHOLD - 20);
       inner.style.transform = `translateX(${curX}px)`;
@@ -3680,7 +3742,7 @@ function initPhaseSwipe() {
 
     inner.addEventListener('touchend', () => {
       swiping = false;
-      if (phaseLocked) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
+      if (phaseLocked || !isHoriz) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
       if (-curX >= THRESHOLD) {
         inner.style.transform = `translateX(-100%)`;
         inner.style.transition = 'transform .25s ease';
