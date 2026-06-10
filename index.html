@@ -64,6 +64,11 @@
 /* テーマ切り替えボタン */
 .theme-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s;flex-shrink:0;}
 .theme-btn:active{background:var(--accent-l);color:var(--accent);}
+/* スリープ防止ボタン */
+.wakelock-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s,border-color .12s;flex-shrink:0;}
+.wakelock-btn:active{background:var(--blue-l);color:var(--blue);}
+.wakelock-btn.active{background:var(--blue-l);color:var(--blue);border-color:var(--blue);}
+.wakelock-btn.unsupported{opacity:.35;cursor:not-allowed;}
 /* テーマ設定カード */
 .theme-opts{display:flex;gap:8px;flex-wrap:wrap;}
 .theme-opt{flex:1;min-width:80px;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:12px;font-family:var(--font);cursor:pointer;text-align:center;transition:border-color .12s,color .12s,background .12s;}
@@ -496,6 +501,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <div class="gas-sync-info" id="gas-sync-info" style="display:none;"></div>
     <button class="hdr-sync-btn" id="hdr-upload-btn" onclick="headerPushToRemote()" title="現在のユーザーデータをGASへ送信（上書き）">↑</button>
     <button class="hdr-sync-btn" id="hdr-download-btn" onclick="headerSyncFromRemote()" title="GASから現在のユーザーデータを受信（マージ）">↓</button>
+    <button class="wakelock-btn" id="wakelock-btn" onclick="toggleWakeLock()" title="スリープ防止：OFF">💤</button>
     <button class="theme-btn" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
     <div class="header-clock" id="hdr-clock"></div>
     <div class="sync-dot" id="sync-dot" title="ローカル保存"></div>
@@ -4273,6 +4279,79 @@ function updateThemeUI(mode) {
   const note = document.getElementById('theme-system-note');
   if (note) note.style.display = mode === 'system' ? '' : 'none';
 }
+
+// ───────────────────────────────────────────
+// SCREEN WAKE LOCK
+// ───────────────────────────────────────────
+let _wakeLock = null;
+let _wakeLockEnabled = false;
+
+async function toggleWakeLock() {
+  if (!('wakeLock' in navigator)) {
+    showSnack('このブラウザはスリープ防止に対応していません');
+    const btn = document.getElementById('wakelock-btn');
+    if (btn) btn.classList.add('unsupported');
+    return;
+  }
+  if (_wakeLockEnabled) {
+    await _releaseWakeLock();
+  } else {
+    await _requestWakeLock();
+  }
+}
+
+async function _requestWakeLock() {
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLockEnabled = true;
+    _wakeLock.addEventListener('release', () => {
+      // ページ非表示などで自動解放された場合
+      _wakeLock = null;
+      _wakeLockEnabled = false;
+      _updateWakeLockUI();
+    });
+    _updateWakeLockUI();
+    showSnack('スリープ防止：ON');
+  } catch (e) {
+    showSnack('スリープ防止の取得に失敗しました');
+  }
+}
+
+async function _releaseWakeLock() {
+  if (_wakeLock) {
+    await _wakeLock.release().catch(() => {});
+    _wakeLock = null;
+  }
+  _wakeLockEnabled = false;
+  _updateWakeLockUI();
+  showSnack('スリープ防止：OFF');
+}
+
+function _updateWakeLockUI() {
+  const btn = document.getElementById('wakelock-btn');
+  if (!btn) return;
+  if (!('wakeLock' in navigator)) {
+    btn.classList.add('unsupported');
+    btn.title = 'スリープ防止：非対応';
+    return;
+  }
+  if (_wakeLockEnabled) {
+    btn.textContent = '👁';
+    btn.classList.add('active');
+    btn.title = 'スリープ防止：ON（タップでOFF）';
+  } else {
+    btn.textContent = '💤';
+    btn.classList.remove('active');
+    btn.title = 'スリープ防止：OFF（タップでON）';
+  }
+}
+
+// ページが再表示されたときに Wake Lock を再取得
+document.addEventListener('visibilitychange', async () => {
+  if (_wakeLockEnabled && document.visibilityState === 'visible') {
+    await _requestWakeLock();
+  }
+});
 
 init();
 </script>
