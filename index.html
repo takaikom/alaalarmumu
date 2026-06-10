@@ -477,6 +477,12 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 /* GAS SYNC */
 .gas-sync-info{font-size:10px;color:var(--text3);padding:4px 0 0;text-align:right;}
+/* 残り時間お知らせ モードボタン・間隔プリセットボタン */
+.remain-mode-btn,.remain-interval-preset-btn{flex:1;min-width:0;padding:7px 4px;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:12px;font-family:var(--font);cursor:pointer;text-align:center;transition:border-color .12s,color .12s,background .12s;white-space:nowrap;}
+.remain-mode-btn.sel,.remain-interval-preset-btn.sel{border-color:var(--accent);color:var(--accent);background:var(--accent-l);}
+.remain-mode-btn:active,.remain-interval-preset-btn:active{background:var(--accent-l);}
+#remain-detail-rows{display:none;}
+#remain-detail-rows.active{display:block;}
 .hdr-sync-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s;font-weight:700;}
 .hdr-sync-btn:active{background:var(--accent-l);color:var(--accent);}
 .hdr-sync-btn:disabled{opacity:.35;cursor:default;}
@@ -604,8 +610,41 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <label class="sw"><input type="checkbox" id="announce-beep" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
       </div>
       <div class="settings-row">
-        <div><div class="settings-row-title">カウントダウン音</div><div class="settings-row-sub">次のステップまで1秒ごとのカウント音</div></div>
+        <div><div class="settings-row-title">刻み音</div><div class="settings-row-sub">次のステップまで1秒ごとのカウント音</div></div>
         <label class="sw"><input type="checkbox" id="announce-tick" checked><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-row-title">残り時間のお知らせ</div><div class="settings-row-sub">設定した間隔で残り時間を通知</div></div>
+        <label class="sw"><input type="checkbox" id="remain-enabled" onchange="onRemainEnabledChange()"><div class="sw-track"></div><div class="sw-thumb"></div></label>
+      </div>
+      <div id="remain-detail-rows">
+        <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;border-top:none;padding-top:0;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--text3);text-transform:uppercase;">通知音</div>
+          <div style="display:flex;gap:6px;width:100%;">
+            <button class="remain-mode-btn" data-mode="speech" onclick="setRemainSound('speech')">🔊 読み上げ</button>
+            <button class="remain-mode-btn" data-mode="beep" onclick="setRemainSound('beep')">🔔 ビープ音</button>
+          </div>
+        </div>
+        <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;padding-top:4px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--text3);text-transform:uppercase;">お知らせ間隔</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;width:100%;">
+            <button class="remain-interval-preset-btn" data-sec="30" onclick="setRemainIntervalPreset(30)">30秒</button>
+            <button class="remain-interval-preset-btn" data-sec="60" onclick="setRemainIntervalPreset(60)">1分</button>
+            <button class="remain-interval-preset-btn" data-sec="120" onclick="setRemainIntervalPreset(120)">2分</button>
+            <button class="remain-interval-preset-btn" data-sec="300" onclick="setRemainIntervalPreset(300)">5分</button>
+            <button class="remain-interval-preset-btn" data-sec="custom" onclick="setRemainIntervalPreset('custom')">カスタム</button>
+          </div>
+          <div id="remain-custom-row" style="display:none;align-items:center;gap:6px;width:100%;">
+            <input type="number" id="remain-custom-min" class="form-input" min="1" max="60" value="3" inputmode="numeric"
+              style="width:72px;height:34px;font-size:15px;text-align:center;"
+              onchange="onRemainCustomMinChange()" oninput="onRemainCustomMinChange()">
+            <span style="font-size:13px;color:var(--text2);">分ごと</span>
+          </div>
+        </div>
+        <div class="settings-row" style="padding-top:4px;padding-bottom:12px;">
+          <div><div class="settings-row-title">秒読みカウント</div><div class="settings-row-sub" id="remain-countdown-sub">次のお知らせ・完了前をカウント</div></div>
+          <label class="sw"><input type="checkbox" id="remain-countdown" onchange="saveRemainSettings()"><div class="sw-track"></div><div class="sw-thumb"></div></label>
+        </div>
       </div>
     </div>
   </div>
@@ -1086,6 +1125,14 @@ let timerTotalSec = 0;
 let timerTickBaseTime = 0;   // 追加: 現フェーズ開始時のDate.now()
 let timerTickBaseSec = 0;    // 追加: 現フェーズ開始時のtimerRemain
 let phaseUndoStack = []; // {phase, index} の配列（最大5件）
+// 残り時間お知らせ設定
+let remainEnabled = false;    // オン/オフ
+let remainSound = 'beep';     // 'speech' | 'beep'
+let remainInterval = 60;      // 秒（お知らせ間隔）
+let remainIsCustom = false;   // カスタム間隔かどうか
+let remainCountdown = false;  // カウントダウン機能オン/オフ
+// カウントダウン用内部状態
+let _remainNextNotifyAt = -1; // 次にお知らせする残り秒（timerRemain の値）
 
 // ── 編集ロック状態（ユーザーごとに保存） ──
 // phaseLocked はタイマー詳細画面専用のメモリ内状態（開くたびにリセット）
@@ -1477,6 +1524,9 @@ function init() {
   // AudioContext 事前アンロック
   // ユーザーの最初のタップ時に AudioContext を resume 済み状態にしておく
   _unlockAudioCtx();
+  // 残り時間お知らせ設定のロード
+  loadRemainSettings();
+  updateRemainUI();
 }
 
 function renderGroupName() {
@@ -3583,6 +3633,7 @@ function timerStartStop() {
     timerRemain = timerPhases[0].sec;
     timerState = 'running';
     announcePhase(0);
+    resetRemainNextNotify(timerPhases[0].sec);
     timerTickBaseTime = Date.now();          // 追加
     timerTickBaseSec = timerPhases[0].sec;   // 追加
     timerInterval = setInterval(timerTick, 1000);
@@ -3622,6 +3673,7 @@ function timerTick() {
     timerTickBaseSec = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
+    resetRemainNextNotify(timerPhases[timerPhaseIdx].sec);
     renderPhaseList();
   }
 
@@ -3630,8 +3682,9 @@ function timerTick() {
   timerTotalElapsed = timerPhases.slice(0, timerPhaseIdx).reduce((s, p) => s + p.sec, 0)
                     + (timerPhases[timerPhaseIdx].sec - timerRemain);
 
-  if (prevRemain !== timerRemain && timerRemain > 0) {
-    playCountdownTick();
+  if (prevRemain !== timerRemain) {
+    if (timerRemain > 0) playCountdownTick();
+    checkRemainNotify(timerRemain, prevRemain);
   }
   timerUpdateDisplay();
 }
@@ -3702,6 +3755,7 @@ function timerSkipNext() {
   timerTickBaseSec = timerRemain;
   playBeep('phase');
   announcePhase(timerPhaseIdx);
+  resetRemainNextNotify(timerRemain);
   timerUpdateDisplay();
   renderPhaseList();
 }
@@ -3715,6 +3769,7 @@ function timerSkipPrev() {
   timerTickBaseTime = Date.now();
   timerTickBaseSec = timerRemain;
   announcePhase(timerPhaseIdx);
+  resetRemainNextNotify(timerRemain);
   timerUpdateDisplay();
   renderPhaseList();
 }
@@ -3722,15 +3777,15 @@ function timerSkipPrev() {
 function timerJumpToStep(idx) {
   if (idx < 0 || idx >= timerPhases.length) return;
   if (timerState === 'idle') {
-    // アイドル時はそのステップからスタート
     timerPhaseIdx = idx;
     timerTotalElapsed = timerPhases.slice(0, idx).reduce((s, p) => s + p.sec, 0);
     timerTotalSec = timerPhases.reduce((s, p) => s + p.sec, 0);
     timerRemain = timerPhases[idx].sec;
     timerState = 'running';
     announcePhase(idx);
-    timerTickBaseTime = Date.now();                // 追加
-    timerTickBaseSec = timerPhases[idx].sec;       // 追加
+    resetRemainNextNotify(timerRemain);
+    timerTickBaseTime = Date.now();
+    timerTickBaseSec = timerPhases[idx].sec;
     timerInterval = setInterval(timerTick, 1000);
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   } else {
@@ -3740,6 +3795,7 @@ function timerJumpToStep(idx) {
     timerTickBaseTime = Date.now();
     timerTickBaseSec = timerRemain;
     announcePhase(idx);
+    resetRemainNextNotify(timerRemain);
   }
   timerUpdateDisplay();
   renderPhaseList();
@@ -3866,7 +3922,196 @@ function announcePhase(idx) {
   speak(msg);
 }
 
-// カウントダウン音（announce-tick スイッチで制御）
+// ── 残り時間お知らせ ──
+function fmtRemainText(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  if (m > 0 && s > 0) return `残り${m}分${s}秒`;
+  if (m > 0) return `残り${m}分`;
+  return `残り${s}秒`;
+}
+
+// フェーズ開始時・スキップ時に「次のお知らせ秒」を計算してセット
+function resetRemainNextNotify(phaseSec) {
+  if (!remainEnabled || remainInterval <= 0) { _remainNextNotifyAt = -1; return; }
+  // フェーズ秒数を interval で割った商×interval が最初の通知点
+  // 例: phaseSec=120, interval=60 → 最初は remain=60 のとき
+  const first = Math.floor(phaseSec / remainInterval) * remainInterval;
+  // フェーズ秒数ちょうどの場合（フェーズ開始と同時）は1段下げる
+  _remainNextNotifyAt = (first === phaseSec && phaseSec > remainInterval)
+    ? phaseSec - remainInterval
+    : first;
+  if (_remainNextNotifyAt <= 0) _remainNextNotifyAt = -1;
+}
+
+function checkRemainNotify(remain, prevRemain) {
+  if (!remainEnabled || remainInterval <= 0) return;
+
+  // お知らせタイミング到達（remain=0は完了直前なので対象外）
+  if (_remainNextNotifyAt > 0 && remain > 0 && remain <= _remainNextNotifyAt && prevRemain > _remainNextNotifyAt) {
+    if (remainSound === 'speech') {
+      speakRemain(remain);
+    } else {
+      playRemainBeep();
+    }
+    // 次のお知らせ点を更新
+    _remainNextNotifyAt -= remainInterval;
+    if (_remainNextNotifyAt <= 0) _remainNextNotifyAt = -1;
+  }
+
+  // カウントダウン機能: 次のお知らせ（または完了=0）まで COUNTDOWN_SECS 秒以内
+  if (remainCountdown) {
+    const COUNTDOWN_SECS = Math.min(10, remainInterval - 1);
+    // 次のお知らせ点（なければ 0 = 完了）を目標とする
+    const target = _remainNextNotifyAt > 0 ? _remainNextNotifyAt : 0;
+    const secToTarget = remain - target;
+    if (secToTarget > 0 && secToTarget <= COUNTDOWN_SECS) {
+      if (remainSound === 'speech') {
+        speakCountNum(secToTarget);
+      } else {
+        playRemainBeep();
+      }
+    }
+  }
+}
+
+function speakRemain(sec) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    const utter = new SpeechSynthesisUtterance(fmtRemainText(sec));
+    utter.lang = 'ja-JP';
+    window.speechSynthesis.speak(utter);
+  }, 50);
+}
+
+function speakCountNum(n) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    const utter = new SpeechSynthesisUtterance(String(n));
+    utter.lang = 'ja-JP';
+    window.speechSynthesis.speak(utter);
+  }, 50);
+}
+
+function playRemainBeep() {
+  try {
+    const ctx = _getSharedAudioCtx();
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return; }
+    [880, 1100].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = f;
+      const t = ctx.currentTime + i * 0.18;
+      g.gain.setValueAtTime(.3, t);
+      g.gain.exponentialRampToValueAtTime(.001, t + .15);
+      o.start(t); o.stop(t + .16);
+    });
+  } catch (e) {}
+}
+
+// ── 残り時間お知らせ UI 制御 ──
+function onRemainEnabledChange() {
+  remainEnabled = document.getElementById('remain-enabled').checked;
+  saveRemainSettings();
+  updateRemainUI();
+}
+
+function setRemainSound(sound) {
+  remainSound = sound;
+  saveRemainSettings();
+  updateRemainUI();
+}
+
+function setRemainIntervalPreset(sec) {
+  if (sec === 'custom') {
+    remainIsCustom = true;
+  } else {
+    remainIsCustom = false;
+    remainInterval = sec;
+  }
+  saveRemainSettings();
+  updateRemainUI();
+  updateRemainCountdownSub();
+}
+
+function onRemainCustomMinChange() {
+  const inp = document.getElementById('remain-custom-min');
+  if (!inp) return;
+  const v = Math.max(1, Math.min(60, parseInt(inp.value) || 1));
+  remainInterval = v * 60;
+  saveRemainSettings();
+  updateRemainCountdownSub();
+}
+
+function saveRemainSettings() {
+  const cdEl = document.getElementById('remain-countdown');
+  if (cdEl) remainCountdown = cdEl.checked;
+  if (remainIsCustom) {
+    const inp = document.getElementById('remain-custom-min');
+    if (inp) remainInterval = Math.max(1, parseInt(inp.value) || 1) * 60;
+  }
+  localStorage.setItem('sa_remain_enabled', remainEnabled ? '1' : '0');
+  localStorage.setItem('sa_remain_sound', remainSound);
+  localStorage.setItem('sa_remain_interval', String(remainInterval));
+  localStorage.setItem('sa_remain_custom', remainIsCustom ? '1' : '0');
+  localStorage.setItem('sa_remain_countdown', remainCountdown ? '1' : '0');
+}
+
+function loadRemainSettings() {
+  remainEnabled = localStorage.getItem('sa_remain_enabled') === '1';
+  remainSound = localStorage.getItem('sa_remain_sound') || 'beep';
+  remainInterval = parseInt(localStorage.getItem('sa_remain_interval') || '60') || 60;
+  remainIsCustom = localStorage.getItem('sa_remain_custom') === '1';
+  remainCountdown = localStorage.getItem('sa_remain_countdown') === '1';
+}
+
+function updateRemainUI() {
+  const enabledChk = document.getElementById('remain-enabled');
+  if (enabledChk) enabledChk.checked = remainEnabled;
+
+  const detailRows = document.getElementById('remain-detail-rows');
+  if (detailRows) detailRows.classList.toggle('active', remainEnabled);
+
+  // 通知音ボタン
+  document.querySelectorAll('.remain-mode-btn').forEach(btn => {
+    btn.classList.toggle('sel', btn.dataset.mode === remainSound);
+  });
+
+  // 間隔プリセットボタン
+  const presets = [30, 60, 120, 300];
+  document.querySelectorAll('.remain-interval-preset-btn').forEach(btn => {
+    const d = btn.dataset.sec;
+    if (d === 'custom') {
+      btn.classList.toggle('sel', remainIsCustom);
+    } else {
+      btn.classList.toggle('sel', !remainIsCustom && parseInt(d) === remainInterval);
+    }
+  });
+
+  // カスタム入力行
+  const customRow = document.getElementById('remain-custom-row');
+  if (customRow) {
+    customRow.style.display = remainIsCustom ? 'flex' : 'none';
+    const inp = document.getElementById('remain-custom-min');
+    if (inp && remainIsCustom) inp.value = String(Math.round(remainInterval / 60));
+  }
+
+  // カウントダウンチェック
+  const cdEl = document.getElementById('remain-countdown');
+  if (cdEl) cdEl.checked = remainCountdown;
+
+  updateRemainCountdownSub();
+}
+
+function updateRemainCountdownSub() {
+  const sub = document.getElementById('remain-countdown-sub');
+  if (!sub) return;
+  const COUNTDOWN_SECS = Math.min(10, remainInterval - 1);
+  sub.textContent = `次のお知らせ・完了前 ${COUNTDOWN_SECS} 秒を秒読み`;
+}
+
+// 刻み音（announce-tick スイッチで制御）
 function playCountdownTick() {
   if (!document.getElementById('announce-tick')?.checked) return;
   try {
