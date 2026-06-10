@@ -120,8 +120,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 /* ALARM CARDS */
 .alarm-list{display:flex;flex-direction:column;gap:8px;}
 .alarm-swipe-wrap{position:relative;border-radius:14px;overflow:hidden;}
-.alarm-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
-.alarm-swipe-del.visible{opacity:1;}
+.alarm-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;cursor:pointer;}
+.alarm-swipe-del.visible{opacity:1;pointer-events:auto;}
 .alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s,transform .1s;position:relative;touch-action:pan-y;user-select:none;}
 .alarm-swipe-wrap:hover .alarm-hover-del{opacity:1;pointer-events:auto;}
 .alarm-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;flex-shrink:0;}
@@ -388,8 +388,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-list-actions{display:flex;gap:6px;flex-shrink:0;}
 /* タイマーカードのスワイプ削除 */
 .timer-swipe-wrap{position:relative;border-radius:14px;overflow:hidden;margin-bottom:8px;}
-.timer-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
-.timer-swipe-del.visible{opacity:1;}
+.timer-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;cursor:pointer;}
+.timer-swipe-del.visible{opacity:1;pointer-events:auto;}
 .timer-swipe-wrap:hover .timer-hover-del{opacity:1;pointer-events:auto;}
 .timer-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;flex-shrink:0;}
 .timer-hover-del:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
@@ -404,7 +404,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .phase-move-panel-btn:disabled{opacity:.25;cursor:default;}
 .phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;transition:border-color .12s;touch-action:pan-y;}
 .phase-item.phase-selected{border-color:var(--accent);background:rgba(216,90,48,.04);}
-.phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
+.phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;cursor:pointer;}
+.phase-swipe-del.visible{opacity:1;pointer-events:auto;}
 .phase-item-top{display:flex;align-items:center;gap:4px;padding:8px 10px;flex-wrap:wrap;}
 .phase-num{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;min-width:18px;}
 .phase-drag{display:none;}
@@ -2097,14 +2098,24 @@ function initSwipeDelete(id) {
   const card = document.getElementById('acard-' + id);
   const delEl = document.getElementById('adel-' + id);
   if (!card || !delEl) return;
-  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
+  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false, revealed = false;
   const THRESHOLD = 80;
+  const SNAP_X = -80;
+
+  function snapBack() {
+    revealed = false;
+    card.style.transition = 'transform .2s ease';
+    card.style.transform = '';
+    delEl.classList.remove('visible');
+    setTimeout(() => { card.style.transition = ''; }, 200);
+  }
 
   card.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    curX = 0;
+    curX = revealed ? SNAP_X : 0;
     swiping = true; dirLocked = false; isHoriz = false;
+    card.style.transition = '';
   }, { passive: true });
 
   card.addEventListener('touchmove', e => {
@@ -2115,25 +2126,39 @@ function initSwipeDelete(id) {
       dirLocked = true;
       isHoriz = Math.abs(dx) > Math.abs(dy);
     }
-    if (!dirLocked || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    curX = Math.max(dx, -THRESHOLD - 20);
+    if (!dirLocked || !isHoriz) { if (!revealed) { card.style.transform = ''; delEl.classList.remove('visible'); } return; }
+    const newX = revealed ? Math.min(0, SNAP_X + dx) : Math.min(0, dx);
+    if (newX > 0) return;
+    curX = Math.max(newX, -THRESHOLD - 20);
     card.style.transform = `translateX(${curX}px)`;
     delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
   }, { passive: true });
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (getAlarmLocked() || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (-curX >= THRESHOLD) {
-      card.style.transform = `translateX(-100%)`;
-      card.style.transition = 'transform .25s ease';
-      setTimeout(() => trashAlarm(id), 250);
+    if (getAlarmLocked()) { snapBack(); return; }
+    if (!isHoriz && !revealed) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (-curX >= THRESHOLD * 0.5) {
+      revealed = true;
+      card.style.transition = 'transform .2s ease';
+      card.style.transform = `translateX(${SNAP_X}px)`;
+      delEl.classList.add('visible');
+      setTimeout(() => { card.style.transition = ''; }, 200);
     } else {
-      card.style.transform = '';
-      delEl.classList.remove('visible');
+      snapBack();
     }
   });
+
+  delEl.addEventListener('click', () => {
+    if (getAlarmLocked()) { snapBack(); showSnack('🔒 ロック中です'); return; }
+    card.style.transition = 'transform .25s ease';
+    card.style.transform = 'translateX(-100%)';
+    setTimeout(() => trashAlarm(id), 250);
+  });
+
+  document.addEventListener('touchstart', e => {
+    if (revealed && !card.contains(e.target) && !delEl.contains(e.target)) snapBack();
+  }, { passive: true });
 }
 
 // ─── ゴミ箱（一時削除） ───
@@ -3140,13 +3165,23 @@ function initTimerSwipeDelete(id) {
   const card = document.getElementById('tcard-' + id);
   const delEl = document.getElementById('tdel-' + id);
   if (!card || !delEl) return;
-  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
+  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false, revealed = false;
   const THRESHOLD = 80;
+  const SNAP_X = -80;
+
+  function snapBack() {
+    revealed = false;
+    card.style.transition = 'transform .2s ease';
+    card.style.transform = '';
+    delEl.classList.remove('visible');
+    setTimeout(() => { card.style.transition = ''; }, 200);
+  }
 
   card.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    curX = 0; swiping = true; dirLocked = false; isHoriz = false;
+    curX = revealed ? SNAP_X : 0; swiping = true; dirLocked = false; isHoriz = false;
+    card.style.transition = '';
   }, { passive: true });
 
   card.addEventListener('touchmove', e => {
@@ -3157,25 +3192,39 @@ function initTimerSwipeDelete(id) {
       dirLocked = true;
       isHoriz = Math.abs(dx) > Math.abs(dy);
     }
-    if (!dirLocked || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    curX = Math.max(dx, -THRESHOLD - 20);
+    if (!dirLocked || !isHoriz) { if (!revealed) { card.style.transform = ''; delEl.classList.remove('visible'); } return; }
+    const newX = revealed ? Math.min(0, SNAP_X + dx) : Math.min(0, dx);
+    if (newX > 0) return;
+    curX = Math.max(newX, -THRESHOLD - 20);
     card.style.transform = `translateX(${curX}px)`;
     delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
   }, { passive: true });
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (getTimerLocked() || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (-curX >= THRESHOLD) {
-      card.style.transform = `translateX(-100%)`;
-      card.style.transition = 'transform .25s ease';
-      setTimeout(() => trashTimerPreset(id), 250);
+    if (getTimerLocked()) { snapBack(); return; }
+    if (!isHoriz && !revealed) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
+    if (-curX >= THRESHOLD * 0.5) {
+      revealed = true;
+      card.style.transition = 'transform .2s ease';
+      card.style.transform = `translateX(${SNAP_X}px)`;
+      delEl.classList.add('visible');
+      setTimeout(() => { card.style.transition = ''; }, 200);
     } else {
-      card.style.transform = '';
-      delEl.classList.remove('visible');
+      snapBack();
     }
   });
+
+  delEl.addEventListener('click', () => {
+    if (getTimerLocked()) { snapBack(); showSnack('🔒 ロック中です'); return; }
+    card.style.transition = 'transform .25s ease';
+    card.style.transform = 'translateX(-100%)';
+    setTimeout(() => trashTimerPreset(id), 250);
+  });
+
+  document.addEventListener('touchstart', e => {
+    if (revealed && !card.contains(e.target) && !delEl.contains(e.target)) snapBack();
+  }, { passive: true });
 }
 
 function trashTimerPreset(id) {
@@ -3813,43 +3862,66 @@ function initPhaseSwipe() {
     const inner = document.getElementById('phase-inner-' + i);
     const delEl = document.getElementById('psdel-' + i);
     if (!inner || !delEl) return;
-    let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
+    let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false, revealed = false;
     const THRESHOLD = 72;
+    const SNAP_X = -72;
+
+    function snapBack() {
+      revealed = false;
+      inner.style.transition = 'transform .2s ease';
+      inner.style.transform = '';
+      delEl.classList.remove('visible');
+      setTimeout(() => { inner.style.transition = ''; }, 200);
+    }
 
     inner.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      curX = 0; swiping = true; dirLocked = false; isHoriz = false;
+      curX = revealed ? SNAP_X : 0; swiping = true; dirLocked = false; isHoriz = false;
+      inner.style.transition = '';
     }, { passive: true });
 
     inner.addEventListener('touchmove', e => {
       if (!swiping) return;
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
-      // 方向が確定するまで待つ（8px移動後に判定）
       if (!dirLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
         dirLocked = true;
         isHoriz = Math.abs(dx) > Math.abs(dy);
       }
-      if (!dirLocked || !isHoriz) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
-      if (dx > 0) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
-      curX = Math.max(dx, -THRESHOLD - 20);
+      if (!dirLocked || !isHoriz) { if (!revealed) { inner.style.transform = ''; delEl.classList.remove('visible'); } return; }
+      const newX = revealed ? Math.min(0, SNAP_X + dx) : Math.min(0, dx);
+      if (newX > 0) return;
+      curX = Math.max(newX, -THRESHOLD - 20);
       inner.style.transform = `translateX(${curX}px)`;
-      delEl.style.opacity = (-curX >= THRESHOLD * 0.5) ? '1' : '0';
+      delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
     }, { passive: true });
 
     inner.addEventListener('touchend', () => {
       swiping = false;
-      if (phaseLocked || !isHoriz) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
-      if (-curX >= THRESHOLD) {
-        inner.style.transform = `translateX(-100%)`;
-        inner.style.transition = 'transform .25s ease';
-        setTimeout(() => deletePhase(i), 250);
+      if (phaseLocked) { snapBack(); return; }
+      if (!isHoriz && !revealed) { inner.style.transform = ''; delEl.classList.remove('visible'); return; }
+      if (-curX >= THRESHOLD * 0.5) {
+        revealed = true;
+        inner.style.transition = 'transform .2s ease';
+        inner.style.transform = `translateX(${SNAP_X}px)`;
+        delEl.classList.add('visible');
+        setTimeout(() => { inner.style.transition = ''; }, 200);
       } else {
-        inner.style.transform = '';
-        delEl.style.opacity = '0';
+        snapBack();
       }
     });
+
+    delEl.addEventListener('click', () => {
+      if (phaseLocked) { snapBack(); return; }
+      inner.style.transition = 'transform .25s ease';
+      inner.style.transform = 'translateX(-100%)';
+      setTimeout(() => deletePhase(i), 250);
+    });
+
+    document.addEventListener('touchstart', e => {
+      if (revealed && !inner.contains(e.target) && !delEl.contains(e.target)) snapBack();
+    }, { passive: true });
   });
 }
 
