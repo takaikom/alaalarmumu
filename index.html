@@ -641,10 +641,13 @@ select.form-input option{background:var(--surface2);color:var(--text);}
             <button class="remain-interval-preset-btn" data-sec="custom" onclick="setRemainIntervalPreset('custom')">カスタム</button>
           </div>
           <div id="remain-custom-row" style="display:none;align-items:center;gap:6px;width:100%;">
-            <input type="number" id="remain-custom-min" class="form-input" min="1" max="60" value="3" inputmode="numeric"
+            <input type="number" id="remain-custom-min" class="form-input" min="1" max="3600" value="3" inputmode="numeric"
               style="width:72px;height:34px;font-size:15px;text-align:center;"
               onchange="onRemainCustomMinChange()" oninput="onRemainCustomMinChange()">
-            <span style="font-size:13px;color:var(--text2);">分ごと</span>
+            <select id="remain-custom-unit" class="form-input" style="width:80px;height:34px;font-size:13px;" onchange="onRemainCustomMinChange()">
+              <option value="60">分ごと</option>
+              <option value="1">秒ごと</option>
+            </select>
           </div>
         </div>
         <div class="settings-row" style="padding-top:4px;padding-bottom:12px;">
@@ -4044,9 +4047,11 @@ function setRemainIntervalPreset(sec) {
 
 function onRemainCustomMinChange() {
   const inp = document.getElementById('remain-custom-min');
+  const unitEl = document.getElementById('remain-custom-unit');
   if (!inp) return;
-  const v = Math.max(1, Math.min(60, parseInt(inp.value) || 1));
-  remainInterval = v * 60;
+  const unit = unitEl ? parseInt(unitEl.value) || 60 : 60;
+  const v = Math.max(1, Math.min(3600, parseInt(inp.value) || 1));
+  remainInterval = v * unit;
   saveRemainSettings();
   updateRemainCountdownSub();
 }
@@ -4056,7 +4061,9 @@ function saveRemainSettings() {
   if (cdEl) remainCountdown = cdEl.checked;
   if (remainIsCustom) {
     const inp = document.getElementById('remain-custom-min');
-    if (inp) remainInterval = Math.max(1, parseInt(inp.value) || 1) * 60;
+    const unitEl = document.getElementById('remain-custom-unit');
+    const unit = unitEl ? parseInt(unitEl.value) || 60 : 60;
+    if (inp) remainInterval = Math.max(1, Math.min(3600, parseInt(inp.value) || 1)) * unit;
   }
   localStorage.setItem('sa_remain_enabled', remainEnabled ? '1' : '0');
   localStorage.setItem('sa_remain_sound', remainSound);
@@ -4101,7 +4108,16 @@ function updateRemainUI() {
   if (customRow) {
     customRow.style.display = remainIsCustom ? 'flex' : 'none';
     const inp = document.getElementById('remain-custom-min');
-    if (inp && remainIsCustom) inp.value = String(Math.round(remainInterval / 60));
+    const unitEl = document.getElementById('remain-custom-unit');
+    if (inp && unitEl && remainIsCustom) {
+      if (remainInterval % 60 === 0) {
+        unitEl.value = '60';
+        inp.value = String(remainInterval / 60);
+      } else {
+        unitEl.value = '1';
+        inp.value = String(remainInterval);
+      }
+    }
   }
 
   // カウントダウンチェック
