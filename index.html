@@ -8,16 +8,52 @@
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
         })(window,document,"clarity","script","wzo9p7jj06");
     </script>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-90QQRPZ51C"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-90QQRPZ51C');
-</script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-90QQRPZ51C"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-90QQRPZ51C');
+  </script>
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SmartAlarm 変更履歴
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v21 (2026-07-03) 不具合総点検・修正
+  【重大】時刻入力欄の左右入れ替わりを修正
+    - 左の入力欄に「分(t-m)」、右に「時(t-h)」が入っていたため、
+      入力した時刻と保存される時刻が入れ替わっていた（59時などの入力も可能だった）
+  【重大】音楽ファイルが鳴らない問題を修正
+    - localStorage（約5MB上限）保存 → IndexedDB保存に変更。大きな音楽ファイルも確実に保存
+    - 既存のlocalStorageデータは自動移行
+    - アラーム発火時にまず自動再生を試行（成功すればタップ不要で音楽が鳴る）
+    - ファイルサイズ上限20MBのガードと未選択時の警告を追加
+  【重大】iOS/Androidの挙動差を解消
+    - iOSのインストール済みPWAでは alert/confirm/prompt が動作しないため、
+      全16箇所をアプリ内ボトムシートに置換（名前変更・削除確認・キャッシュ更新などが復活）
+    - 通知許可リクエストを初回タップ時に移動（iOSはユーザー操作必須）
+    - アラーム音のAudioContextを共有化（iOSの生成数上限対策）
+    - viewportに maximum-scale=1 を追加（iOSの入力フォーカス時ズーム防止）
+  【重大】バックグラウンドでのアラーム取りこぼしを修正
+    - 「分の完全一致」チェック → 「前回チェック以降の全分を走査」方式に変更
+      （バックグラウンドのタイマー間引きで分をまたいでも発火）
+    - 画面復帰時に即チェック。10分以内の撃ち漏らしは遅延発火、それ以前は通知表示
+    - スヌーズを setTimeout 依存 → 時刻ベース方式に変更（スリープ補正）
+    - チェック間隔を5秒→1秒に短縮（発火の正時性向上）
+    - アラーム発火時にバイブレーション追加
+  時計モードに午前/午後切替を追加（13〜23時が選択不能だった問題を修正）
+  キーボード⇔時計モード切替時に入力値を同期
+  次のアラーム計算がゴミ箱内のアラームを含めていた問題を修正
+  ステップ編集ロックが「タイマーを追加」ボタンを誤って無効化していた問題を修正
+  試聴ボタンのAudioContext乱造を修正（共有コンテキスト使用）
+  esc()が引用符をエスケープしていなかった問題を修正
+  GASスクリプト雛形をalert表示 → コピーボタン付きシートに変更
+  「ご利用にあたって」にWebアプリの制約（画面を閉じると鳴らない）を明記
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1C1A17">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -120,8 +156,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 /* ALARM CARDS */
 .alarm-list{display:flex;flex-direction:column;gap:8px;}
 .alarm-swipe-wrap{position:relative;border-radius:14px;overflow:hidden;}
-.alarm-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
-.alarm-swipe-del.visible{opacity:1;}
+.alarm-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;cursor:pointer;}
+.alarm-swipe-del.visible{opacity:1;pointer-events:auto;}
 .alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;transition:opacity .2s,transform .1s;position:relative;touch-action:pan-y;user-select:none;}
 .alarm-swipe-wrap:hover .alarm-hover-del{opacity:1;pointer-events:auto;}
 .alarm-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;flex-shrink:0;}
@@ -388,8 +424,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-list-actions{display:flex;gap:6px;flex-shrink:0;}
 /* タイマーカードのスワイプ削除 */
 .timer-swipe-wrap{position:relative;border-radius:14px;overflow:hidden;margin-bottom:8px;}
-.timer-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
-.timer-swipe-del.visible{opacity:1;}
+.timer-swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;border-radius:0 14px 14px 0;pointer-events:none;opacity:0;transition:opacity .15s;cursor:pointer;}
+.timer-swipe-del.visible{opacity:1;pointer-events:auto;}
 .timer-swipe-wrap:hover .timer-hover-del{opacity:1;pointer-events:auto;}
 .timer-hover-del{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .12s,color .12s,border-color .12s;pointer-events:none;flex-shrink:0;}
 .timer-hover-del:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
@@ -404,7 +440,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .phase-move-panel-btn:disabled{opacity:.25;cursor:default;}
 .phase-item{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;transition:border-color .12s;touch-action:pan-y;}
 .phase-item.phase-selected{border-color:var(--accent);background:rgba(216,90,48,.04);}
-.phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;}
+.phase-swipe-del{position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;border-radius:0 12px 12px 0;pointer-events:none;opacity:0;transition:opacity .15s;cursor:pointer;}
+.phase-swipe-del.visible{opacity:1;pointer-events:auto;}
 .phase-item-top{display:flex;align-items:center;gap:4px;padding:8px 10px;flex-wrap:wrap;}
 .phase-num{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;min-width:18px;}
 .phase-drag{display:none;}
@@ -522,6 +559,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <div class="sec-label">登録済みアラーム</div>
     <button class="lock-btn" id="alarm-lock-btn" onclick="toggleAlarmLock()" title="編集ロック">🔓</button>
   </div>
+  <div style="font-size:11px;color:var(--text3);padding:0 16px 8px;line-height:1.6;">⚠️ 画面を閉じている間はアラームは鳴りません。就寝時は画面を開いたまま、💤スリープ防止をONにしてください。</div>
   <div class="alarm-list" id="alarm-list"></div>
 </div>
 
@@ -559,7 +597,10 @@ select.form-input option{background:var(--surface2);color:var(--text);}
       <button class="lock-btn" id="timer-lock-btn" onclick="toggleTimerLock()" title="編集ロック">🔓</button>
     </div>
     <div id="timer-card-list"></div>
-    <button class="btn-add-phase" style="margin-top:8px;" onclick="addTimerPreset()">＋ タイマーを追加</button>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn-add-phase" style="flex:1;margin-top:0;" onclick="addTimerPreset()">＋ タイマーを追加</button>
+      <button class="btn-add-phase" style="flex:1;margin-top:0;" onclick="openTimerMergeModal()">🔗 タイマーを統合</button>
+    </div>
   </div>
 
   <!-- タイマー詳細ビュー -->
@@ -669,6 +710,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
       <div style="font-size:12px;color:var(--text3);" id="notice-toggle-icon">▼</div>
     </div>
     <div id="notice-body" style="display:none;padding:0 16px 14px;font-size:12px;color:var(--text2);line-height:1.8;">
+      ⏰ <b>アラームはこのアプリの画面を開いている間だけ鳴ります</b>（Webアプリの制約で、アプリを閉じたり画面がスリープすると鳴りません）。就寝時に使う場合は、充電しながら画面を開いたままにし、ヘッダーの💤（スリープ防止）をONにしてください。画面を閉じていた間に時刻が過ぎたアラームは、画面を開いたときに10分以内なら遅れて鳴ります。<br>
       このアプリは開発者が個人利用目的で開発したツールです。勝手に機能・仕様変更し、それに伴い不具合が発生したり、予告なく公開終了する可能性があります。<b>ご利用は自己責任でお願いします。</b><br>
       データの保証はできません（データは開発者側にはありません）。大切な情報は<b>定期的にご自身でバックアップ</b>してください。<br>
       困ったときは、開発者と個人的なつながりがある方は開発者に直接ご相談ください。<br>なお、使いやすさ向上のために簡単な操作ログ（個人データは含まず、匿名）を収集するかもしれません。
@@ -759,7 +801,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <div class="sec-label">アプリ情報</div>
   <div class="settings-card">
-    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.4</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
+    <div class="settings-row"><div><div class="settings-row-title">SmartAlarm PWA v4.5 (v21)</div><div class="settings-row-sub">カレンダー連動型アラームアプリ</div></div></div>
     <div class="settings-row">
       <div><div class="settings-row-title">ホーム画面にインストール</div><div class="settings-row-sub">Chromeメニュー(⋮)→「ホーム画面に追加」<br>またはアドレスバー右端の ⊕ をタップ</div></div>
       <button class="settings-btn" onclick="tryInstallPWA()">案内</button>
@@ -789,13 +831,13 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
       <!-- 時刻 -->
       <div class="form-group">
-        <label class="form-label">起床時刻</label>
+        <label class="form-label">設定時刻</label>
         <div id="time-kb-mode">
           <div class="time-kb-wrap">
             <div class="time-spinners">
               <div class="time-spin-unit">
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00" inputmode="numeric" enterkeyhint="done">
+                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00" inputmode="numeric" enterkeyhint="next">
                 </div>
                 <div class="time-spin-col">
                   <button class="time-spin-btn" onclick="spinTime('h',1)">▲</button>
@@ -805,7 +847,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
               <span class="time-colon">:</span>
               <div class="time-spin-unit">
                 <div class="time-digit-box">
-                  <input type="number" class="time-digit" id="t-h" min="0" max="23" placeholder="00" inputmode="numeric" enterkeyhint="next">
+                  <input type="number" class="time-digit" id="t-m" min="0" max="59" placeholder="00" inputmode="numeric" enterkeyhint="done">
                 </div>
                 <div class="time-spin-col">
                   <button class="time-spin-btn" onclick="spinTime('m',1)">▲</button>
@@ -824,6 +866,9 @@ select.form-input option{background:var(--surface2);color:var(--text);}
             <div class="clock-hm-btns">
               <button class="clock-hm-btn active" id="btn-ch" onclick="setClockMode('h')">時</button>
               <button class="clock-hm-btn" id="btn-cm" onclick="setClockMode('m')">分</button>
+              <span style="width:12px;flex-shrink:0;"></span>
+              <button class="clock-hm-btn" id="btn-am" onclick="setClockAmPm(0)">午前</button>
+              <button class="clock-hm-btn" id="btn-pm" onclick="setClockAmPm(1)">午後</button>
             </div>
             <div class="clock-display" id="clock-disp">07:00</div>
             <div class="clock-face" id="clock-face"
@@ -994,6 +1039,19 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   </div>
 </div>
 
+<!-- タイマー統合モーダル -->
+<div id="timer-merge-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;">
+  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;max-height:80dvh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:15px;font-weight:700;">🔗 タイマーを統合</div>
+      <button onclick="closeTimerMergeModal()" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">統合したいタイマーを順番にタップしてください。タップした順にステップが結合されます（もう一度タップすると選択解除）。</div>
+    <div id="timer-merge-list"></div>
+    <button class="btn-add-phase" style="margin-top:14px;" onclick="confirmTimerMerge()">この順番で統合する</button>
+  </div>
+</div>
+
 <div class="snackbar" id="snackbar"></div>
 
 <script>
@@ -1061,6 +1119,123 @@ function setCurrentUserId(id) {
   setGroupCache(d);
 }
 
+// ───────────────────────────────────────────
+// アプリ内ダイアログ（alert / confirm / prompt の代替）
+// iOSのインストール済みPWA（スタンドアロンモード）では window.alert/confirm/prompt
+// が動作しない（何も表示されず undefined が返る）ため、Promiseベースの
+// ボトムシートで代替する。これがiOSで名前変更・削除確認等が効かなかった原因。
+// ───────────────────────────────────────────
+function _appDialog({ title = '', message = '', input = null, buttons }) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:flex-end;justify-content:center;';
+    const btnHtml = buttons.map((b, i) =>
+      `<button data-di="${i}" style="flex:1;height:44px;border-radius:12px;border:none;font-family:var(--font);font-size:14px;font-weight:${b.primary || b.danger ? '700' : '400'};cursor:pointer;background:${b.danger ? 'var(--red)' : b.primary ? 'var(--accent)' : 'var(--surface2)'};color:${b.danger || b.primary ? '#fff' : 'var(--text2)'};">${esc(b.label)}</button>`
+    ).join('');
+    ov.innerHTML = `<div style="background:var(--surface);border-radius:20px 20px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));width:100%;max-width:480px;">
+      ${title ? `<div style="font-size:15px;font-weight:700;margin-bottom:10px;">${esc(title)}</div>` : ''}
+      ${message ? `<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px;white-space:pre-wrap;word-break:break-word;">${esc(message)}</div>` : ''}
+      ${input !== null ? `<input id="app-dialog-input" type="text" maxlength="60" style="width:100%;height:44px;border:1.5px solid var(--accent);border-radius:12px;padding:0 14px;font-family:var(--font);font-size:16px;color:var(--text);background:var(--surface2);outline:none;margin-bottom:14px;">` : ''}
+      <div style="display:flex;gap:8px;">${btnHtml}</div>
+    </div>`;
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('#app-dialog-input');
+    if (inp) { inp.value = input; setTimeout(() => { inp.focus(); inp.select(); }, 60); }
+    const cancelVal = (buttons.find(b => b.cancel) || {}).value;
+    const done = v => { ov.remove(); resolve(v); };
+    ov.querySelectorAll('[data-di]').forEach(btn => btn.addEventListener('click', () => {
+      const b = buttons[parseInt(btn.dataset.di)];
+      done(b.value === '__input__' ? (inp ? inp.value : '') : b.value);
+    }));
+    ov.addEventListener('click', e => { if (e.target === ov) done(cancelVal !== undefined ? cancelVal : null); });
+    if (inp) inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { done(inp.value); }
+      if (e.key === 'Escape') { done(cancelVal !== undefined ? cancelVal : null); }
+    });
+  });
+}
+function appAlert(message, title = '') {
+  return _appDialog({ title, message, buttons: [{ label: 'OK', primary: true, value: true, cancel: true }] });
+}
+function appConfirm(message, opts = {}) {
+  const { title = '確認', okText = 'OK', danger = false } = opts;
+  return _appDialog({ title, message, buttons: [
+    { label: 'キャンセル', value: false, cancel: true },
+    { label: okText, primary: !danger, danger, value: true }
+  ]});
+}
+function appPrompt(message, defVal = '', title = '') {
+  return _appDialog({ title, message, input: defVal, buttons: [
+    { label: 'キャンセル', value: null, cancel: true },
+    { label: 'OK', primary: true, value: '__input__' }
+  ]});
+}
+
+// ───────────────────────────────────────────
+// 音楽ファイル保存（IndexedDB）
+// 旧実装はbase64をlocalStorage（約5MB上限）に保存していたため、
+// 音楽ファイルの保存が黙って失敗 → リロードで消え「鳴らない」原因になっていた。
+// IndexedDBなら大きなファイルも保存できる。既存データは自動移行する。
+// ───────────────────────────────────────────
+const MUSIC_DB_NAME = 'sa_music_db', MUSIC_STORE_NAME = 'music';
+let _musicDbPromise = null;
+function _openMusicDb() {
+  if (_musicDbPromise) return _musicDbPromise;
+  _musicDbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(MUSIC_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(MUSIC_STORE_NAME); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { _musicDbPromise = null; reject(req.error); };
+  });
+  return _musicDbPromise;
+}
+function _musicKey(uid) { return getCurrentGroupId() + ':' + uid; }
+async function idbGetMusic(uid) {
+  try {
+    const db = await _openMusicDb();
+    return await new Promise(resolve => {
+      const rq = db.transaction(MUSIC_STORE_NAME, 'readonly').objectStore(MUSIC_STORE_NAME).get(_musicKey(uid));
+      rq.onsuccess = () => resolve(rq.result || null);
+      rq.onerror = () => resolve(null);
+    });
+  } catch (e) { return null; }
+}
+async function idbSetMusic(uid, store) {
+  try {
+    const db = await _openMusicDb();
+    return await new Promise(resolve => {
+      const tx = db.transaction(MUSIC_STORE_NAME, 'readwrite');
+      tx.objectStore(MUSIC_STORE_NAME).put(store, _musicKey(uid));
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+      tx.onabort = () => resolve(false);
+    });
+  } catch (e) { return false; }
+}
+// 現在ユーザーの音楽ストアをIndexedDBから読み込み（旧localStorage形式は自動移行）
+async function loadMusicStore() {
+  const uid = getCurrentUserId();
+  let store = (await idbGetMusic(uid)) || {};
+  try {
+    const legacy = localStorage.getItem('sa_music_' + uid);
+    if (legacy) {
+      const old = JSON.parse(legacy);
+      store = Object.assign({}, old, store);
+      await idbSetMusic(uid, store);
+      localStorage.removeItem('sa_music_' + uid);
+    }
+  } catch (e) {}
+  // 読み込み中に別ユーザーへ切り替わっていたら反映しない
+  if (uid !== getCurrentUserId()) return;
+  musicStore = store;
+  try { renderAlarms(); } catch (e) {} // 🎵タグ表示を反映
+}
+async function persistMusicStore() {
+  const ok = await idbSetMusic(getCurrentUserId(), musicStore);
+  if (!ok) showSnack('⚠️ 音楽ファイルの保存に失敗しました');
+  return ok;
+}
+
 const SA_PINNED_KEY = 'sa_pinned_user_';
 const SA_PARENT_KEY = 'sa_parent_mode_';
 function getPinnedUserId() { return localStorage.getItem(SA_PINNED_KEY + getCurrentGroupId()) || ''; }
@@ -1078,11 +1253,11 @@ let calY, calM;
 let selAlarmId = null;
 let firingAlarm = null, firingAudio = null, firingCtx = null;
 let loopTimer = null;
-let lastCheckedMin = -1;
+let lastCheckedEpochMin = Math.floor(Date.now() / 60000); // 前回チェックした「絶対分」
+let _snoozeTarget = null; // { at: 発火予定epoch(ms), alarm } — setTimeout非依存（スリープ補正）
+const ALARM_CATCHUP_MIN = 10; // 画面復帰時、何分前までの撃ち漏らしを遅延発火するか
 let clockMode = 'h', clockH = 7, clockM = 0, cDragging = false;
 let musicStore = {};
-
-let previewCtx = null, previewTimer = null;
 // ── AudioContext アンロック（iOS/Android autoplay 対策） ──
 let _sharedAudioCtx = null;
 
@@ -1108,6 +1283,10 @@ function _unlockAudioCtx() {
       src.buffer = buf;
       src.connect(ctx.destination);
       src.start(0);
+    } catch (e) {}
+    // 通知許可はユーザー操作中でないと取得できない（特にiOS）ため、ここでリクエスト
+    try {
+      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
     } catch (e) {}
     document.removeEventListener('touchstart', unlock, true);
     document.removeEventListener('mousedown', unlock, true);
@@ -1191,7 +1370,8 @@ function togglePhaseLock() {
   if (btn) { btn.textContent = phaseLocked ? '🔒' : '🔓'; btn.classList.toggle('locked', phaseLocked); }
   const wrap = document.querySelector('.phase-list-wrap');
   if (wrap) wrap.classList.toggle('edit-locked', phaseLocked);
-  const addPhaseBtn = document.querySelector('.btn-add-phase');
+  // 詳細画面内の「ステップを追加」ボタンのみ対象（旧実装は一覧画面の「タイマーを追加」を誤って無効化していた）
+  const addPhaseBtn = document.querySelector('#timer-detail-view .btn-add-phase');
   if (addPhaseBtn) { addPhaseBtn.style.pointerEvents = phaseLocked ? 'none' : ''; addPhaseBtn.style.opacity = phaseLocked ? '.4' : ''; }
   showSnack(phaseLocked ? '🔒 ステップ編集をロックしました' : '🔓 ステップ編集のロックを解除しました');
 }
@@ -1465,7 +1645,8 @@ function loadUserData() {
     overrides = user.overrides || {};
     snoozeMin = user.snoozeMin || 10;
     timerPresets = user.timerPresets || [];
-    try { musicStore = JSON.parse(localStorage.getItem('sa_music_' + uid) || '{}'); } catch { musicStore = {}; }
+    musicStore = {};
+    loadMusicStore(); // IndexedDBから非同期で読み込み（完了後にrenderAlarmsで反映）
   } catch { alarms = []; holidays = {}; overrides = {}; timerPresets = []; }
   document.getElementById('snooze-sel').value = snoozeMin;
   document.getElementById('snooze-disp').textContent = snoozeMin;
@@ -1499,7 +1680,7 @@ function init() {
   renderCalendar();
   updateHolidayStatus();
   startClock();
-  setInterval(checkAlarms, 5000);
+  setInterval(checkAlarms, 1000); // 1秒間隔（正時発火・スヌーズ発火・バックグラウンド復帰対応）
   setInterval(updateNextInfo, 60000);
   updateNextInfo();
   renderTimerList();
@@ -1507,12 +1688,13 @@ function init() {
   renderUserTabsWrap();
   updateBackRowTop();
   document.getElementById('gas-url-input').value = getGasUrl();
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  // 通知許可はロード時に要求しない（iOSはユーザー操作内でないと取得不可）→ 初回タップ時に要求
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-  // スリープ復帰時にタイマーを即時補正
+  // スリープ・バックグラウンド復帰時：アラームを即チェック（撃ち漏らし対応）＋タイマー補正
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && timerState === 'running') {
-      timerTick();
+    if (document.visibilityState === 'visible') {
+      checkAlarms();
+      if (timerState === 'running') timerTick();
     }
   });
     document.querySelectorAll('.wd-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('sel')));
@@ -1671,14 +1853,41 @@ function getSheet() {
   if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
   return sheet;
 }`;
-  alert('GASスクリプト:\n\n' + tmpl + '\n\n上記をGASエディタに貼り付け、「ウェブアプリとしてデプロイ」→「アクセス: 全員」で公開してください。');
+  // alert()はiOSのインストール済みPWAで動作しないため、コピーボタン付きシートで表示
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:480px;max-height:85dvh;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
+      <div style="font-size:15px;font-weight:700;">📋 GASスクリプト雛形</div>
+      <button id="gas-tmpl-close" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;">✕</button>
+    </div>
+    <textarea id="gas-tmpl-text" readonly spellcheck="false" style="flex:1;min-height:180px;width:100%;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);color:var(--text2);font-family:monospace;font-size:11px;line-height:1.5;padding:10px;resize:none;outline:none;"></textarea>
+    <button id="gas-tmpl-copy" class="btn-primary" style="margin-top:10px;padding:12px;flex-shrink:0;">📋 コードをコピー</button>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7;flex-shrink:0;">GASエディタに貼り付け、「デプロイ」→「新しいデプロイ」→ ウェブアプリ → アクセス「全員」で公開してください。</div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#gas-tmpl-text').value = tmpl;
+  ov.querySelector('#gas-tmpl-close').addEventListener('click', () => ov.remove());
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  ov.querySelector('#gas-tmpl-copy').addEventListener('click', async () => {
+    let ok = false;
+    try { await navigator.clipboard.writeText(tmpl); ok = true; }
+    catch (e) {
+      try {
+        const ta = ov.querySelector('#gas-tmpl-text');
+        ta.focus(); ta.select();
+        ok = document.execCommand('copy');
+      } catch (e2) {}
+    }
+    showSnack(ok ? '✅ コピーしました' : '❌ コピーできませんでした。長押しで選択してください');
+  });
 }
 
 // ── GASデータ修復: ローカルの全ユーザーをGASに上書き送信（矛盾データのリセット） ──
 async function repairGasData() {
   const url = getGasUrl();
   if (!url) { showSnack('GAS URLが設定されていません'); return; }
-  if (!confirm('GASのデータをローカルの全ユーザーで上書きします。\n\nGASに存在してローカルにいないユーザーのデータは失われます。\n\nよろしいですか？')) return;
+  if (!(await appConfirm('GASのデータをローカルの全ユーザーで上書きします。\n\nGASに存在してローカルにいないユーザーのデータは失われます。\n\nよろしいですか？', { okText: '上書き送信', danger: true }))) return;
 
   setSyncDot('syncing');
   showSnack('🔧 GASデータを修復中…');
@@ -1732,8 +1941,8 @@ function clearGasUrlInput() {
   document.getElementById('gas-url-input').value = '';
 }
 
-function disconnectGas() {
-  if (!confirm('GAS URLの接続を解除しますか？')) return;
+async function disconnectGas() {
+  if (!(await appConfirm('GAS URLの接続を解除しますか？', { okText: '解除' }))) return;
   const groups = loadGroups();
   const gid = getCurrentGroupId();
   const g = groups.find(g => g.id === gid);
@@ -1744,8 +1953,8 @@ function disconnectGas() {
   showSnack('接続を解除しました');
 }
 
-function disconnectGroupGas() {
-  if (!confirm('このグループのGAS接続を解除しますか？')) return;
+async function disconnectGroupGas() {
+  if (!(await appConfirm('このグループのGAS接続を解除しますか？', { okText: '解除' }))) return;
   const groups = loadGroups();
   const gid = getCurrentGroupId();
   const g = groups.find(g => g.id === gid);
@@ -1872,13 +2081,17 @@ function renderUserTabsWrap() {
     });
 
     // 右クリック／長押し：名前変更 or 自分として設定
-    btn.addEventListener('contextmenu', e => {
+    btn.addEventListener('contextmenu', async e => {
       e.preventDefault();
       if (isParentMode() && u.id !== getPinnedUserId()) {
         // 親モードONで他人のタブ：「自分として設定」か「名前変更」を選ぶ
-        const choice = confirm(`「${u.name}」を自分のユーザーとして設定しますか？\n（キャンセルで名前変更）`);
-        if (choice) setSelfUser(u.id);
-        else renameUser(u.id);
+        const choice = await _appDialog({ title: u.name, message: '操作を選んでください', buttons: [
+          { label: 'キャンセル', value: null, cancel: true },
+          { label: '名前変更', value: 'rename' },
+          { label: '自分として設定', primary: true, value: 'self' }
+        ]});
+        if (choice === 'self') setSelfUser(u.id);
+        else if (choice === 'rename') renameUser(u.id);
       } else {
         renameUser(u.id);
       }
@@ -1956,12 +2169,12 @@ function addUserFromOverlay(name) {
   showSnack(`「${name}」を追加しました`);
 }
 
-function renameUser(uid) {
+async function renameUser(uid) {
   const d = getGroupCache();
   const user = d.users.find(u => u.id === uid);
   if (!user) return;
-  const name = prompt('新しいユーザー名を入力してください', user.name);
-  if (!name || name.trim() === user.name) return;
+  const name = await appPrompt('新しいユーザー名を入力してください', user.name, 'ユーザー名の変更');
+  if (!name || !name.trim() || name.trim() === user.name) return;
   user.name = name.trim();
   setGroupCache(d);
   renderUserTabsWrap();
@@ -1970,12 +2183,12 @@ function renameUser(uid) {
   showSnack('名前を変更しました');
 }
 
-function renameGroup(gid) {
+async function renameGroup(gid) {
   const groups = loadGroups();
   const g = groups.find(g => g.id === gid);
   if (!g) return;
-  const name = prompt('新しいグループ名を入力してください', g.name);
-  if (!name || name.trim() === g.name) return;
+  const name = await appPrompt('新しいグループ名を入力してください', g.name, 'グループ名の変更');
+  if (!name || !name.trim() || name.trim() === g.name) return;
   g.name = name.trim();
   saveGroups(groups);
   renderGroupName();
@@ -2096,18 +2309,38 @@ function renderAlarms() {
   applyAlarmLockUI();
 }
 
-function initSwipeDelete(id) {
-  const card = document.getElementById('acard-' + id);
-  const delEl = document.getElementById('adel-' + id);
-  if (!card || !delEl) return;
-  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
-  const THRESHOLD = 80;
+// ─── スワイプで削除ボタンを表示し、タップで削除を実行する共通ロジック ───
+// 勢いよくスワイプしても即削除されないよう、スワイプは「削除ボタンの表示」までとし、
+// 実際の削除はそのボタンをタップしたときのみ実行する。
+function initSwipeReveal({ wrap, card, delBtn, threshold, isLockedFn, onDelete }) {
+  if (!wrap || !card || !delBtn) return;
+  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false, isOpen = false;
+  const openOffset = -threshold;
+
+  function setOpen(open) {
+    isOpen = open;
+    card.style.transition = 'transform .2s ease';
+    card.style.transform = open ? `translateX(${openOffset}px)` : '';
+    delBtn.classList.toggle('visible', open);
+  }
+
+  // 開いている状態でカード側をタップしたら、その操作は実行せず閉じるだけにする
+  wrap.addEventListener('click', e => {
+    if (delBtn.contains(e.target)) return;
+    if (isOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    }
+  }, true);
 
   card.addEventListener('touchstart', e => {
+    if (isLockedFn()) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    curX = 0;
+    curX = isOpen ? openOffset : 0;
     swiping = true; dirLocked = false; isHoriz = false;
+    card.style.transition = '';
   }, { passive: true });
 
   card.addEventListener('touchmove', e => {
@@ -2118,24 +2351,40 @@ function initSwipeDelete(id) {
       dirLocked = true;
       isHoriz = Math.abs(dx) > Math.abs(dy);
     }
-    if (!dirLocked || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    curX = Math.max(dx, -THRESHOLD - 20);
+    if (!dirLocked || !isHoriz) return;
+    let nx = (isOpen ? openOffset : 0) + dx;
+    nx = Math.max(openOffset - 20, Math.min(0, nx));
+    curX = nx;
     card.style.transform = `translateX(${curX}px)`;
-    delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
+    delBtn.classList.toggle('visible', -curX >= threshold * 0.5);
   }, { passive: true });
 
   card.addEventListener('touchend', () => {
     swiping = false;
-    if (getAlarmLocked() || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (-curX >= THRESHOLD) {
-      card.style.transform = `translateX(-100%)`;
-      card.style.transition = 'transform .25s ease';
-      setTimeout(() => trashAlarm(id), 250);
-    } else {
-      card.style.transform = '';
-      delEl.classList.remove('visible');
+    if (isLockedFn() || !isHoriz) {
+      if (!isOpen) { card.style.transform = ''; delBtn.classList.remove('visible'); }
+      return;
     }
+    if (-curX >= threshold * 0.5) setOpen(true);
+    else setOpen(false);
+  });
+
+  delBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(false);
+    onDelete();
+  });
+}
+
+function initSwipeDelete(id) {
+  initSwipeReveal({
+    wrap: document.getElementById('aswipe-' + id),
+    card: document.getElementById('acard-' + id),
+    delBtn: document.getElementById('adel-' + id),
+    threshold: 80,
+    isLockedFn: getAlarmLocked,
+    onDelete: () => trashAlarm(id)
   });
 }
 
@@ -2157,19 +2406,20 @@ function restoreAlarm(id) {
   showSnack('復元しました');
 }
 
-function purgeAlarm(id) {
-  if (!confirm('このアラームを完全に削除しますか？元に戻せません。')) return;
+async function purgeAlarm(id) {
+  if (!(await appConfirm('このアラームを完全に削除しますか？元に戻せません。', { okText: '完全削除', danger: true }))) return;
   alarms = alarms.filter(a => a.id !== id);
-  delete overrides[id]; delete musicStore[id];
+  delete overrides[id]; delete musicStore[id]; persistMusicStore();
   saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
   showSnack('完全に削除しました');
 }
 
-function purgeAllAlarms() {
+async function purgeAllAlarms() {
   const n = alarms.filter(a => a._trashed).length;
   if (!n) return;
-  if (!confirm(`ゴミ箱内の${n}件のアラームを完全に削除しますか？元に戻せません。`)) return;
+  if (!(await appConfirm(`ゴミ箱内の${n}件のアラームを完全に削除しますか？元に戻せません。`, { okText: '完全削除', danger: true }))) return;
   alarms.filter(a => a._trashed).forEach(a => { delete overrides[a.id]; delete musicStore[a.id]; });
+  persistMusicStore();
   alarms = alarms.filter(a => !a._trashed);
   saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo();
   showSnack('ゴミ箱を空にしました');
@@ -2181,6 +2431,7 @@ function purgeAllAlarms() {
 function openModal(id = null) {
   // 編集の場合はロックチェック、追加は許可
   if (id && getAlarmLocked()) { showSnack('🔒 ロック中です。解除してから編集してください'); return; }
+  delete musicStore['__pending__']; // 前回キャンセルした未確定ファイルをクリア
   document.getElementById('edit-id').value = id || '';
   document.getElementById('sheet-title').textContent = id ? 'アラームを編集' : 'アラームを追加';
   document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('sel'));
@@ -2213,6 +2464,7 @@ function openModal(id = null) {
     document.getElementById('skip-hol').checked = true;
     [1, 2, 3, 4, 5].forEach(d => document.querySelector(`.wd-btn[data-d="${d}"]`).classList.add('sel'));
   }
+  updateAmPmUI();
   document.getElementById('time-kb-mode').style.display = '';
   document.getElementById('time-clock-mode').style.display = 'none';
   document.getElementById('alarm-sheet').classList.add('open');
@@ -2244,7 +2496,10 @@ function saveAlarm() {
     musicStore[id] = musicStore['__pending__'];
     delete musicStore['__pending__'];
   }
-  try { localStorage.setItem('sa_music_' + getCurrentUserId(), JSON.stringify(musicStore)); } catch (e) {}
+  persistMusicStore();
+  if (sound === 'music' && !musicStore[id]?.data) {
+    showSnack('⚠️ 音楽ファイルが未選択です。設定するまでビープ音で鳴ります');
+  }
 
   const idx = alarms.findIndex(a => a.id === id);
   const alarm = { id, time, label, days, skipHolidays, sound, enabled: true };
@@ -2276,23 +2531,33 @@ function selSound(el) {
 
 function previewSound(type, e) {
   e.stopPropagation();
-  if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
-  if (previewCtx) { try { previewCtx.close(); } catch (e) {} previewCtx = null; }
-  previewCtx = new (window.AudioContext || window.webkitAudioContext)();
-  playTones(previewCtx, type, 3);
-  previewTimer = setTimeout(() => { try { previewCtx?.close(); } catch (e) {} previewCtx = null; }, 4000);
+  // 共有AudioContextを使用（iOSはAudioContextの生成数に上限があり、乱造すると鳴らなくなる）
+  try {
+    const ctx = _getSharedAudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => playTones(ctx, type, 2)).catch(() => {});
+    } else {
+      playTones(ctx, type, 2);
+    }
+  } catch (err) {}
 }
 
 function onMusicFile(e) {
   const file = e.target.files[0]; if (!file) return;
+  e.target.value = ''; // 同じファイルを再選択できるようリセット
+  if (file.size > 20 * 1024 * 1024) {
+    showSnack('❌ ファイルが大きすぎます（20MBまで）');
+    return;
+  }
   const editId = document.getElementById('edit-id').value;
   const storeKey = editId || '__pending__';
   const reader = new FileReader();
   reader.onload = ev => {
     musicStore[storeKey] = { data: ev.target.result, name: file.name };
     document.getElementById('music-name').textContent = file.name;
-    try { localStorage.setItem('sa_music_' + getCurrentUserId(), JSON.stringify(musicStore)); } catch (err) { showSnack('ファイルが大きすぎる可能性があります'); }
+    persistMusicStore().then(ok => { if (ok) showSnack('🎵 「' + file.name + '」を設定しました'); });
   };
+  reader.onerror = () => showSnack('❌ ファイルの読み込みに失敗しました');
   reader.readAsDataURL(file);
 }
 
@@ -2305,7 +2570,14 @@ function toggleTimeMode() {
   const isKb = kb.style.display !== 'none';
   kb.style.display = isKb ? 'none' : '';
   cl.style.display = isKb ? '' : 'none';
-  if (!isKb) { buildClockFace(); updateClockHand(); }
+  if (isKb) {
+    // キーボード → 時計：入力済みの値を時計に引き継ぐ
+    const h = parseInt(document.getElementById('t-h').value);
+    const m = parseInt(document.getElementById('t-m').value);
+    if (!isNaN(h)) clockH = Math.min(23, Math.max(0, h));
+    if (!isNaN(m)) clockM = Math.min(59, Math.max(0, m));
+    updateClockDisplay(); buildClockFace(); updateClockHand(); updateAmPmUI();
+  }
 }
 
 function setClockMode(m) {
@@ -2334,12 +2606,26 @@ function buildClockFace() {
     const isActive = clockMode === 'h' ? (clockH % 12 === n % 12) : (clockM === n);
     if (isActive) el.classList.add('active');
     el.addEventListener('click', () => {
-      if (clockMode === 'h') clockH = n === 12 ? 0 : n;
+      if (clockMode === 'h') clockH = (n === 12 ? 0 : n) + (clockH >= 12 ? 12 : 0); // 午前/午後を維持
       else clockM = n;
-      updateClockDisplay(); buildClockFace(); updateClockHand();
+      updateClockDisplay(); buildClockFace(); updateClockHand(); updateAmPmUI();
     });
     face.appendChild(el);
   });
+}
+
+// 午前/午後の切替（旧実装は12時間分しか選択できず、13〜23時が設定不能だった）
+function setClockAmPm(pm) {
+  const h12 = clockH % 12;
+  clockH = pm ? h12 + 12 : h12;
+  updateClockDisplay(); buildClockFace(); updateClockHand(); updateAmPmUI();
+}
+
+function updateAmPmUI() {
+  const pm = clockH >= 12;
+  const am = document.getElementById('btn-am'), pmBtn = document.getElementById('btn-pm');
+  if (am) am.classList.toggle('active', !pm);
+  if (pmBtn) pmBtn.classList.toggle('active', pm);
 }
 
 function updateClockHand() {
@@ -2378,11 +2664,11 @@ function cUpdateFromEvent(e) {
   const angle = Math.atan2(py, px) * 180 / Math.PI + 90;
   const normalized = ((angle % 360) + 360) % 360;
   if (clockMode === 'h') {
-    clockH = Math.round(normalized / 30) % 12;
+    clockH = (Math.round(normalized / 30) % 12) + (clockH >= 12 ? 12 : 0); // 午前/午後を維持
   } else {
     clockM = Math.round(normalized / 6) % 60;
   }
-  updateClockDisplay(); buildClockFace(); updateClockHand();
+  updateClockDisplay(); buildClockFace(); updateClockHand(); updateAmPmUI();
 }
 
 // ───────────────────────────────────────────
@@ -2483,48 +2769,106 @@ function toggleOverride(ds) {
 // ───────────────────────────────────────────
 // ALARM CHECK
 // ───────────────────────────────────────────
+// 指定した時刻（分）にアラームaが鳴るべきかどうか
+function alarmMatchesAt(a, ds, dow, isHol, minOfDay) {
+  const [ah, am] = a.time.split(':').map(Number);
+  if (ah * 60 + am !== minOfDay) return false;
+  const ov = (overrides[a.id] || {})[ds];
+  if (ov === false) return false;
+  if (ov !== true && !willFireByDefault(a, dow, isHol)) return false;
+  return true;
+}
+
 function checkAlarms() {
-  const now = new Date();
-  const min = now.getHours() * 60 + now.getMinutes();
-  if (min === lastCheckedMin) return;
-  lastCheckedMin = min;
-  const ds = fmtDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const dow = now.getDay(); const isHol = !!holidays[ds];
-  for (const a of alarms) {
-    if (a._trashed) continue;
-    const [ah, am] = a.time.split(':').map(Number);
-    if (ah * 60 + am !== min) continue;
-    const ov = (overrides[a.id] || {})[ds];
-    if (ov === false) continue;
-    if (ov !== true && !willFireByDefault(a, dow, isHol)) continue;
+  const nowMs = Date.now();
+  const nowEpochMin = Math.floor(nowMs / 60000);
+
+  // ── スヌーズ発火（時刻ベース：バックグラウンド・スリープでも取りこぼさない） ──
+  if (_snoozeTarget && nowMs >= _snoozeTarget.at && !firingAlarm) {
+    const a = _snoozeTarget.alarm;
+    _snoozeTarget = null;
+    lastCheckedEpochMin = nowEpochMin;
     fireAlarm(a);
-    break;
+    return;
+  }
+
+  if (nowEpochMin === lastCheckedEpochMin) return;
+  if (firingAlarm) { lastCheckedEpochMin = nowEpochMin; return; } // 発火中は新規発火しない
+
+  // ── 前回チェック以降の「全ての分」を走査 ──
+  // 旧実装は現在の分との完全一致のみだったため、バックグラウンドでタイマーが
+  // 間引かれて分をまたぐとアラームが永久に鳴らなかった。
+  let scanFrom = lastCheckedEpochMin + 1;
+  if (nowEpochMin - scanFrom > 720) scanFrom = nowEpochMin - 720; // 走査は最大12時間分
+  let toFire = null;   // キャッチアップ猶予内 → 遅れて発火
+  let missed = null;   // 猶予超過 → 通知のみ
+
+  for (let em = scanFrom; em <= nowEpochMin; em++) {
+    const d = new Date(em * 60000);
+    const ds = fmtDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    const dow = d.getDay();
+    const isHol = !!holidays[ds];
+    const minOfDay = d.getHours() * 60 + d.getMinutes();
+    for (const a of alarms) {
+      if (a._trashed || !a.time) continue;
+      if (!alarmMatchesAt(a, ds, dow, isHol, minOfDay)) continue;
+      const lateMin = nowEpochMin - em;
+      if (lateMin <= ALARM_CATCHUP_MIN) toFire = { alarm: a, lateMin };
+      else missed = a;
+    }
+  }
+  lastCheckedEpochMin = nowEpochMin;
+
+  if (toFire) {
+    fireAlarm(toFire.alarm, toFire.lateMin);
+  } else if (missed) {
+    showSnack(`⏰ ${missed.time} のアラーム時刻を過ぎていました（画面を閉じている間は鳴らせません）`);
   }
 }
 
-function fireAlarm(a) {
+function fireAlarm(a, lateMin = 0) {
   firingAlarm = a;
   document.getElementById('firing-time').textContent = a.time;
-  document.getElementById('firing-label').textContent = a.label || '起床の時間です';
+  document.getElementById('firing-label').textContent = (a.label || '起床の時間です') + (lateMin > 0 ? `（${lateMin}分遅れ）` : '');
   document.getElementById('firing-overlay').classList.add('open');
   document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('firing'));
   const card = document.getElementById('acard-' + a.id);
   if (card) card.classList.add('firing');
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), silent: true });
-  }
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('SmartAlarm', { body: a.time + ' ' + (a.label || '起床の時間です'), silent: true });
+    }
+  } catch (e) {}
+  if (navigator.vibrate) navigator.vibrate([400, 150, 400]);
   startAlarmSound(a);
 }
 
 // ── 音楽ファイルを使うか判定するヘルパー ──
+// musicStoreはユーザー読込時にIndexedDBからメモリへロード済み
 function getFreshMusicData(alarmId) {
-  const uid = getCurrentUserId();
-  let store = musicStore;
+  return musicStore[alarmId]?.data || null;
+}
+
+// ビープ系サウンドのループ再生（共有AudioContext使用・バイブ付き）
+function _startBeepLoop(type) {
   try {
-    const raw = localStorage.getItem('sa_music_' + uid);
-    if (raw) store = JSON.parse(raw);
+    const ctx = _getSharedAudioCtx();
+    firingCtx = ctx;
+    const startLoop = () => {
+      if (firingCtx !== ctx) return; // 既に停止 or 別の発火に切り替わった
+      clearInterval(loopTimer);
+      loopTimer = setInterval(() => {
+        playTones(ctx, type, 1);
+        if (navigator.vibrate) navigator.vibrate(300);
+      }, 1500);
+      playTones(ctx, type, 1);
+    };
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(startLoop).catch(startLoop);
+    } else {
+      startLoop();
+    }
   } catch (e) {}
-  return store[alarmId]?.data || null;
 }
 
 function startAlarmSound(a) {
@@ -2533,28 +2877,37 @@ function startAlarmSound(a) {
 
   if (a.sound === 'music' && getFreshMusicData(a.id)) {
     // ── 音楽モード ──
-    // Step1: まずビープで鳴らす（autoplay制限を回避するため）
-    try {
-      firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-      // AudioContextがsuspendedの場合はresumeを試みる
-      if (firingCtx.state === 'suspended') firingCtx.resume();
-      loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
-      playTones(firingCtx, 'beep', 1);
-    } catch (e) {}
-    // Step2: STOPボタンタップ時に音楽へ切り替えるフラグを立てる
     _pendingMusicAlarm = a;
-    if (hint) hint.style.display = '';
+    _musicStarted = false;
+    const data = getFreshMusicData(a.id);
+    // まず自動再生を試みる（同じセッション内で一度でも操作していれば成功することが多い）
+    try {
+      const audio = new Audio();
+      audio.loop = true;
+      audio.src = data;
+      firingAudio = audio;
+      audio.play().then(() => {
+        if (firingAudio !== audio) return; // 既に停止済み
+        _musicStarted = true;
+        if (hint) hint.style.display = 'none';
+      }).catch(() => {
+        if (firingAudio !== audio) return;
+        // 自動再生がブロックされた場合：ビープで代替し、タップで音楽へ切替
+        firingAudio = null;
+        _startBeepLoop('beep');
+        if (hint) hint.style.display = '';
+      });
+    } catch (e) {
+      firingAudio = null;
+      _startBeepLoop('beep');
+      if (hint) hint.style.display = '';
+    }
   } else {
     // ── ビープ/gentle/urgentモード ──
     _pendingMusicAlarm = null;
+    _musicStarted = false;
     if (hint) hint.style.display = 'none';
-    try {
-      firingCtx = _getSharedAudioCtx();
-      firingCtx.resume().then(() => {
-        loopTimer = setInterval(() => playTones(firingCtx, a.sound || 'beep', 1), 1500);
-        playTones(firingCtx, a.sound || 'beep', 1);
-      }).catch(() => {});
-    } catch (e) {}
+    _startBeepLoop(a.sound || 'beep');
   }
 }
 
@@ -2580,14 +2933,11 @@ function handleStopTap() {
           // まだブロックされた場合はビープに戻す
           console.warn('[handleStopTap] play blocked:', err.message);
           firingAudio = null;
-          firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-          loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
-          playTones(firingCtx, 'beep', 1);
+          _startBeepLoop('beep');
           if (hint) hint.style.display = 'none';
         });
       } catch (e) {
-        firingCtx = new (window.AudioContext || window.webkitAudioContext)();
-        loopTimer = setInterval(() => playTones(firingCtx, 'beep', 1), 1500);
+        _startBeepLoop('beep');
       }
       if (hint) hint.style.display = 'none';
       // 次のタップでSTOP
@@ -2623,7 +2973,9 @@ function snoozeAlarm() {
   if (!a) return;
   _pendingMusicAlarm = null;
   _musicStarted = false;
-  setTimeout(() => fireAlarm(a), snoozeMin * 60 * 1000);
+  // setTimeoutはバックグラウンドで間引き・破棄されるため、時刻ベースで管理し
+  // checkAlarms()（毎秒＋画面復帰時）で発火する
+  _snoozeTarget = { at: Date.now() + snoozeMin * 60 * 1000, alarm: a };
   showSnack(`${snoozeMin}分後に再通知します`);
 }
 
@@ -2675,8 +3027,8 @@ async function fetchHolidays() {
   btn.textContent = '取得'; btn.disabled = false;
 }
 
-function resetHolidays() {
-  if (!confirm('祝日データをリセットしますか？')) return;
+async function resetHolidays() {
+  if (!(await appConfirm('祝日データをリセットしますか？', { okText: '削除', danger: true }))) return;
   holidays = {}; saveData(); updateHolidayStatus(); renderCalendar();
   showSnack('祝日データを削除しました');
 }
@@ -2707,7 +3059,7 @@ function calcNext() {
     const ds = fmtDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
     const dow = d.getDay(); const isHol = !!holidays[ds];
     for (const a of alarms) {
-      if (!a.enabled) continue;
+      if (a._trashed || !a.enabled) continue; // ゴミ箱内は除外
       const [ah, am] = a.time.split(':').map(Number);
       const at = new Date(d); at.setHours(ah, am, 0, 0);
       if (at <= now) continue;
@@ -2918,10 +3270,10 @@ function addGroup() {
   showSnack('グループを追加しました');
 }
 
-function deleteGroup(id) {
+async function deleteGroup(id) {
   const groups = loadGroups();
   if (groups.length <= 1) { showSnack('最後のグループは削除できません'); return; }
-  if (!confirm('このグループを削除しますか？（データも削除されます）')) return;
+  if (!(await appConfirm('このグループを削除しますか？（データも削除されます）', { okText: '削除', danger: true }))) return;
   const newGroups = groups.filter(g => g.id !== id);
   saveGroups(newGroups);
   localStorage.removeItem(groupDataKey(id));
@@ -2967,10 +3319,10 @@ function addUser() {
   showSnack('ユーザーを追加しました');
 }
 
-function deleteUser(id) {
+async function deleteUser(id) {
   const d = getGroupCache();
   if ((d.users || []).length <= 1) { showSnack('最後のユーザーは削除できません'); return; }
-  if (!confirm('このユーザーを削除しますか？')) return;
+  if (!(await appConfirm('このユーザーを削除しますか？', { okText: '削除', danger: true }))) return;
   d.users = d.users.filter(u => u.id !== id);
   if (!d.deletedUsers) d.deletedUsers = [];
   d.deletedUsers.push({ id });
@@ -3140,44 +3492,13 @@ function renderTimerList() {
 }
 
 function initTimerSwipeDelete(id) {
-  const card = document.getElementById('tcard-' + id);
-  const delEl = document.getElementById('tdel-' + id);
-  if (!card || !delEl) return;
-  let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
-  const THRESHOLD = 80;
-
-  card.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    curX = 0; swiping = true; dirLocked = false; isHoriz = false;
-  }, { passive: true });
-
-  card.addEventListener('touchmove', e => {
-    if (!swiping) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    if (!dirLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-      dirLocked = true;
-      isHoriz = Math.abs(dx) > Math.abs(dy);
-    }
-    if (!dirLocked || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (dx > 0) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    curX = Math.max(dx, -THRESHOLD - 20);
-    card.style.transform = `translateX(${curX}px)`;
-    delEl.classList.toggle('visible', -curX >= THRESHOLD * 0.5);
-  }, { passive: true });
-
-  card.addEventListener('touchend', () => {
-    swiping = false;
-    if (getTimerLocked() || !isHoriz) { card.style.transform = ''; delEl.classList.remove('visible'); return; }
-    if (-curX >= THRESHOLD) {
-      card.style.transform = `translateX(-100%)`;
-      card.style.transition = 'transform .25s ease';
-      setTimeout(() => trashTimerPreset(id), 250);
-    } else {
-      card.style.transform = '';
-      delEl.classList.remove('visible');
-    }
+  initSwipeReveal({
+    wrap: document.getElementById('tswipe-' + id),
+    card: document.getElementById('tcard-' + id),
+    delBtn: document.getElementById('tdel-' + id),
+    threshold: 80,
+    isLockedFn: getTimerLocked,
+    onDelete: () => trashTimerPreset(id)
   });
 }
 
@@ -3198,18 +3519,18 @@ function restoreTimerPreset(id) {
   showSnack('復元しました');
 }
 
-function purgeTimerPreset(id) {
-  if (!confirm('このタイマーを完全に削除しますか？元に戻せません。')) return;
+async function purgeTimerPreset(id) {
+  if (!(await appConfirm('このタイマーを完全に削除しますか？元に戻せません。', { okText: '完全削除', danger: true }))) return;
   timerPresets = timerPresets.filter(p => p.id !== id);
   if (currentTimerPresetId === id) { currentTimerPresetId = null; timerPhases = []; }
   saveData(); renderTimerList();
   showSnack('完全に削除しました');
 }
 
-function purgeAllTimerPresets() {
+async function purgeAllTimerPresets() {
   const n = timerPresets.filter(p => p._trashed).length;
   if (!n) return;
-  if (!confirm(`ゴミ箱内の${n}件のタイマーを完全に削除しますか？元に戻せません。`)) return;
+  if (!(await appConfirm(`ゴミ箱内の${n}件のタイマーを完全に削除しますか？元に戻せません。`, { okText: '完全削除', danger: true }))) return;
   timerPresets = timerPresets.filter(p => !p._trashed);
   saveData(); renderTimerList();
   showSnack('ゴミ箱を空にしました');
@@ -3237,7 +3558,8 @@ function renameCurrentTimer() {
   input.style.cssText = 'flex:1;border:1.5px solid var(--accent);border-radius:8px;padding:4px 10px;font-family:var(--font);font-size:15px;font-weight:700;color:var(--text);background:var(--surface2);outline:none;width:100%;';
   titleEl.replaceWith(input);
   input.focus();
-  input.select();
+  const endPos = input.value.length;
+  input.setSelectionRange(endPos, endPos);
   const commit = () => {
     const name = input.value.trim() || '新しいタイマー';
     preset.name = name;
@@ -3253,6 +3575,65 @@ function renameCurrentTimer() {
   };
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { input.value = preset.name || '新しいタイマー'; input.blur(); } });
+}
+
+// ── タイマー統合 ──
+let _timerMergeSelection = []; // タップした順にpresetIdを格納
+
+function openTimerMergeModal() {
+  if (getTimerLocked()) { showSnack('🔒 ロック中です。解除してから編集してください'); return; }
+  const activeCount = timerPresets.filter(p => !p._trashed).length;
+  if (activeCount < 2) { showSnack('統合には2件以上のタイマーが必要です'); return; }
+  _timerMergeSelection = [];
+  renderTimerMergeList();
+  document.getElementById('timer-merge-modal').style.display = 'flex';
+}
+
+function closeTimerMergeModal() {
+  document.getElementById('timer-merge-modal').style.display = 'none';
+}
+
+function toggleTimerMergeSelect(id) {
+  const idx = _timerMergeSelection.indexOf(id);
+  if (idx >= 0) _timerMergeSelection.splice(idx, 1);
+  else _timerMergeSelection.push(id);
+  renderTimerMergeList();
+}
+
+function renderTimerMergeList() {
+  const el = document.getElementById('timer-merge-list');
+  if (!el) return;
+  const active = timerPresets.filter(p => !p._trashed);
+  el.innerHTML = active.map(p => {
+    const order = _timerMergeSelection.indexOf(p.id);
+    const sel = order >= 0;
+    const totalSec = (p.phases || []).reduce((s, ph) => s + ph.sec, 0);
+    const steps = (p.phases || []).length;
+    return `<div onclick="toggleTimerMergeSelect('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;margin-bottom:6px;border:1.5px solid ${sel ? 'var(--accent)' : 'var(--border2)'};background:${sel ? 'var(--surface3)' : 'var(--surface2)'};cursor:pointer;">
+      <div style="width:24px;height:24px;border-radius:50%;background:${sel ? 'var(--accent)' : 'var(--border2)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${sel ? (order + 1) : ''}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:14px;">${esc(p.name || '（名前未設定）')}</div>
+        <div style="font-size:11px;color:var(--text3);">${steps}ステップ・合計${fmtSec(totalSec)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function confirmTimerMerge() {
+  if (_timerMergeSelection.length < 2) { showSnack('統合するタイマーを2つ以上選択してください'); return; }
+  const presetsInOrder = _timerMergeSelection.map(id => timerPresets.find(p => p.id === id)).filter(Boolean);
+  if (presetsInOrder.length < 2) { showSnack('統合するタイマーを2つ以上選択してください'); return; }
+  const mergedName = presetsInOrder.map(p => p.name || '（名前未設定）').join('+');
+  const mergedPhases = [];
+  presetsInOrder.forEach(p => {
+    (p.phases || []).forEach(ph => mergedPhases.push({ ...ph }));
+  });
+  const id = 'tp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  timerPresets.push({ id, name: mergedName, phases: mergedPhases });
+  saveData();
+  renderTimerList();
+  closeTimerMergeModal();
+  showSnack(`「${mergedName}」として統合しました`);
 }
 
 // ── タイマーコピー ──
@@ -3814,45 +4195,13 @@ function timerJumpToStep(idx) {
 // ── フェーズ スワイプ削除（スマホ）──
 function initPhaseSwipe() {
   timerPhases.forEach((_, i) => {
-    const inner = document.getElementById('phase-inner-' + i);
-    const delEl = document.getElementById('psdel-' + i);
-    if (!inner || !delEl) return;
-    let startX = 0, startY = 0, curX = 0, swiping = false, dirLocked = false, isHoriz = false;
-    const THRESHOLD = 72;
-
-    inner.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      curX = 0; swiping = true; dirLocked = false; isHoriz = false;
-    }, { passive: true });
-
-    inner.addEventListener('touchmove', e => {
-      if (!swiping) return;
-      const dx = e.touches[0].clientX - startX;
-      const dy = e.touches[0].clientY - startY;
-      // 方向が確定するまで待つ（8px移動後に判定）
-      if (!dirLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        dirLocked = true;
-        isHoriz = Math.abs(dx) > Math.abs(dy);
-      }
-      if (!dirLocked || !isHoriz) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
-      if (dx > 0) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
-      curX = Math.max(dx, -THRESHOLD - 20);
-      inner.style.transform = `translateX(${curX}px)`;
-      delEl.style.opacity = (-curX >= THRESHOLD * 0.5) ? '1' : '0';
-    }, { passive: true });
-
-    inner.addEventListener('touchend', () => {
-      swiping = false;
-      if (phaseLocked || !isHoriz) { inner.style.transform = ''; delEl.style.opacity = '0'; return; }
-      if (-curX >= THRESHOLD) {
-        inner.style.transform = `translateX(-100%)`;
-        inner.style.transition = 'transform .25s ease';
-        setTimeout(() => deletePhase(i), 250);
-      } else {
-        inner.style.transform = '';
-        delEl.style.opacity = '0';
-      }
+    initSwipeReveal({
+      wrap: document.getElementById('phase-item-' + i),
+      card: document.getElementById('phase-inner-' + i),
+      delBtn: document.getElementById('psdel-' + i),
+      threshold: 72,
+      isLockedFn: () => phaseLocked,
+      onDelete: () => deletePhase(i)
     });
   });
 }
@@ -4206,12 +4555,12 @@ function tryInstallPWA() {
     deferredInstallPrompt.prompt();
     deferredInstallPrompt.userChoice.then(() => { deferredInstallPrompt = null; });
   } else {
-    alert('インストール手順:\n\n① Chromeのアドレスバー右端の ⊕ をタップ\n　または\n② Chromeメニュー(⋮)→「ホーム画面に追加」\n\n※ すでにインストール済みの場合はこの手順は不要です。');
+    appAlert('① Chromeのアドレスバー右端の ⊕ をタップ\n　または\n② Chromeメニュー(⋮)→「ホーム画面に追加」\n\niPhone/iPadの場合はSafariの共有ボタン→「ホーム画面に追加」\n\n※ すでにインストール済みの場合はこの手順は不要です。', 'インストール手順');
   }
 }
 
-function clearCacheAndReload() {
-  if (!confirm('キャッシュを削除してアプリを最新版に更新しますか？')) return;
+async function clearCacheAndReload() {
+  if (!(await appConfirm('キャッシュを削除してアプリを最新版に更新しますか？', { okText: '更新' }))) return;
   if ('caches' in window) {
     caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
       .then(() => {
@@ -4230,7 +4579,7 @@ function clearCacheAndReload() {
 function pad(n) { return String(n).padStart(2, '0'); }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 function fmtDate(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
-function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function showSnack(msg) {
   const el = document.getElementById('snackbar');
   el.textContent = msg; el.classList.add('show');
