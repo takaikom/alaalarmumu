@@ -181,7 +181,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .alarm-card.disabled{opacity:.42;}
 .alarm-card.firing{border-color:var(--accent);animation:cpulse 1s ease-in-out infinite alternate;}
 @keyframes cpulse{from{background:var(--surface);}to{background:rgba(216,90,48,.1);}}
-.alarm-card-left{flex:1;min-width:0;}
+.alarm-card-left{flex:1;min-width:0;cursor:pointer;border-radius:8px;transition:background .1s;}
+.alarm-card-left:active{background:var(--surface3);}
 .alarm-time-big{font-family:var(--mono);font-size:clamp(26px,9vw,34px);font-weight:400;letter-spacing:-.02em;line-height:1;margin-bottom:4px;}
 .alarm-subtitle{font-size:12px;color:var(--text2);margin-bottom:4px;}
 .alarm-tags{display:flex;gap:4px;flex-wrap:wrap;}
@@ -189,6 +190,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .atag.holiday{border-color:rgba(90,138,42,.5);color:var(--green);}
 .atag.music{border-color:rgba(74,128,192,.5);color:var(--blue);}
 .alarm-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;}
+.alarm-card-btns{display:flex;align-items:center;gap:8px;}
 
 /* TOGGLE SWITCH */
 .sw{position:relative;width:46px;height:26px;cursor:pointer;flex-shrink:0;}
@@ -214,26 +216,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-fab{width:44px;height:44px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:24px;font-weight:300;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,transform .1s;box-shadow:0 2px 12px rgba(216,90,48,.35);}
 .btn-fab:active{transform:scale(.93);background:var(--accent-d);}
 
-/* CALENDAR */
-.cal-alarm-selector{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px;}
-.cal-selector-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
-.cal-alarm-list{display:flex;flex-direction:column;gap:4px;}
-.cal-alarm-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);cursor:pointer;transition:border-color .12s;}
-.cal-alarm-item.sel{border-color:var(--accent);}
-.cal-alarm-item-l{display:flex;align-items:center;gap:10px;}
-.cal-ai-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--text3);flex-shrink:0;transition:background .12s,border-color .12s;}
-.cal-alarm-item.sel .cal-ai-dot{background:var(--accent);border-color:var(--accent);}
-.cal-ai-time{font-family:var(--mono);font-size:18px;}
-.cal-ai-name{font-size:11px;color:var(--text2);}
-.cal-ai-status{font-size:11px;color:var(--text3);}
-.cal-hint{font-size:11px;color:var(--text3);padding:6px 2px 10px;line-height:1.7;}
+/* CALENDAR（アラームタブ上部に固定表示するコンパクト版） */
+.cal-compact-pin{position:sticky;top:var(--back-row-top,134px);z-index:40;background:var(--bg);margin:0 -16px 10px;padding:10px 16px 8px;border-bottom:1px solid var(--border);}
+.cal-target-row{font-size:11px;color:var(--text3);padding:0 1px 8px;line-height:1.6;}
+.cal-target-row.has-sel{color:var(--text2);}
+.cal-target-row strong{color:var(--accent);font-family:var(--mono);font-weight:700;}
 
-.cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
-.cal-month-label{font-size:16px;font-weight:700;text-align:center;flex:1;}
-.cal-nav-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;}
+.cal-month-label{font-size:13px;font-weight:700;text-align:center;flex:1;}
+.cal-nav-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
 .cal-nav-btn:active{background:var(--surface3);}
-.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px;}
-.cal-dow-cell{text-align:center;font-size:11px;color:var(--text3);padding:4px 0;}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px;}
+.cal-dow-cell{text-align:center;font-size:9px;color:var(--text3);padding:2px 0;}
 .cal-dow-cell.sun{color:#B06060;} .cal-dow-cell.sat{color:#5070A0;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 .cal-cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:4px;font-size:13px;color:var(--text2);cursor:pointer;border:1.5px solid transparent;transition:background .1s,border-color .1s;position:relative;user-select:none;}
@@ -242,18 +236,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .cal-cell.today{border-color:var(--accent);color:var(--accent);font-weight:700;}
 .cal-cell.sunday,.cal-cell.holiday{color:#B06060;}
 .cal-cell.saturday{color:#5070A0;}
-.cal-cell.s-default-on{background:rgba(90,138,42,.14);border-color:rgba(90,138,42,.4);}
-.cal-cell.s-default-off{background:rgba(80,60,40,.2);}
-.cal-cell.s-force-on{background:rgba(90,138,42,.28);border-color:var(--green);}
-.cal-cell.s-force-off{background:rgba(192,48,48,.18);border-color:var(--red);}
-.cell-dot{width:4px;height:4px;border-radius:50%;position:absolute;bottom:3px;left:50%;transform:translateX(-50%);}
-.cell-dot.on{background:var(--green);} .cell-dot.off{background:var(--red);} .cell-dot.hol{background:#B06060;right:4px;left:auto;transform:none;}
+.cal-cell.s-on{background:rgba(90,138,42,.22);}
+.cal-cell.s-off{background:rgba(80,60,40,.2);}
 
-.cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+/* コンパクト版：グリッドの縦幅を約半分に */
+.cal-grid-compact .cal-cell{aspect-ratio:2.2/1;font-size:11px;padding-top:2px;border-radius:6px;}
+
+.cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
 .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
 .legend-dot{width:9px;height:9px;border-radius:3px;}
-.ld-on{background:rgba(90,138,42,.5);} .ld-off{background:rgba(80,60,40,.4);}
-.ld-fon{background:var(--green);} .ld-foff{background:var(--red);}
+.ld-on{background:rgba(90,138,42,.6);} .ld-off{background:rgba(80,60,40,.5);}
+.cal-legend-compact{margin-top:6px;padding:6px 10px;}
+.cal-legend-compact .legend-item{font-size:10px;}
+
+/* アラームカード：カレンダー編集対象として選択中 */
+.alarm-card.cal-selected{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent) inset;}
 
 /* SETTINGS */
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;}
@@ -548,45 +545,39 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 <div class="user-tabs-wrap" id="user-tabs-wrap"></div>
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('alarms')">アラーム</button>
-  <button class="tab-btn" onclick="switchTab('calendar')">カレンダー</button>
   <button class="tab-btn" onclick="switchTab('timer')">タイマー</button>
   <button class="tab-btn" onclick="switchTab('settings')">設定</button>
 </div>
 
-<!-- ALARMS VIEW -->
+<!-- ALARMS VIEW（カレンダー機能を統合） -->
 <div id="view-alarms" class="view active">
+
+  <!-- カレンダー（コンパクト・上部固定） -->
+  <div class="cal-compact-pin" id="cal-compact-pin">
+    <div class="cal-target-row" id="cal-target-row">アラームのカードをタップすると、ここでON/OFFカレンダーを設定できます。</div>
+    <div class="cal-nav-row">
+      <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <div class="cal-month-label" id="cal-month-label"></div>
+      <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-dow-row">
+      <div class="cal-dow-cell sun">日</div><div class="cal-dow-cell">月</div><div class="cal-dow-cell">火</div>
+      <div class="cal-dow-cell">水</div><div class="cal-dow-cell">木</div><div class="cal-dow-cell">金</div>
+      <div class="cal-dow-cell sat">土</div>
+    </div>
+    <div class="cal-grid cal-grid-compact" id="cal-grid"></div>
+    <div class="cal-legend cal-legend-compact">
+      <div class="legend-item"><div class="legend-dot ld-on"></div>鳴る</div>
+      <div class="legend-item"><div class="legend-dot ld-off"></div>スキップ</div>
+    </div>
+  </div>
+
   <div class="sec-label-row">
     <div class="sec-label">登録済みアラーム</div>
     <button class="lock-btn" id="alarm-lock-btn" onclick="toggleAlarmLock()" title="編集ロック">🔓</button>
   </div>
   <div style="font-size:11px;color:var(--text3);padding:0 16px 8px;line-height:1.6;">⚠️ 画面を閉じている間はアラームは鳴りません。就寝時は画面を開いたまま、💤スリープ防止をONにしてください。</div>
   <div class="alarm-list" id="alarm-list"></div>
-</div>
-
-<!-- CALENDAR VIEW -->
-<div id="view-calendar" class="view">
-  <div class="cal-alarm-selector">
-    <div class="cal-selector-title">① 対象アラームを選択</div>
-    <div class="cal-alarm-list" id="cal-alarm-list"></div>
-  </div>
-  <div class="cal-hint" id="cal-hint">アラームを選択して、下のカレンダーで日付をタップすると ON/OFF が切り替わります。</div>
-  <div class="cal-nav-row">
-    <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
-    <div class="cal-month-label" id="cal-month-label"></div>
-    <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
-  </div>
-  <div class="cal-dow-row">
-    <div class="cal-dow-cell sun">日</div><div class="cal-dow-cell">月</div><div class="cal-dow-cell">火</div>
-    <div class="cal-dow-cell">水</div><div class="cal-dow-cell">木</div><div class="cal-dow-cell">金</div>
-    <div class="cal-dow-cell sat">土</div>
-  </div>
-  <div class="cal-grid" id="cal-grid"></div>
-  <div class="cal-legend">
-    <div class="legend-item"><div class="legend-dot ld-on"></div>鳴る</div>
-    <div class="legend-item"><div class="legend-dot ld-off"></div>スキップ</div>
-    <div class="legend-item"><div class="legend-dot ld-fon"></div>強制ON</div>
-    <div class="legend-item"><div class="legend-dot ld-foff"></div>強制OFF</div>
-  </div>
 </div>
 
 <!-- TIMER VIEW (一覧) -->
@@ -2228,12 +2219,12 @@ function startClock() {
 // TABS
 // ───────────────────────────────────────────
 function switchTab(name) {
-  const names = ['alarms', 'calendar', 'timer', 'settings'];
+  const names = ['alarms', 'timer', 'settings'];
   document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.getElementById('add-bar').style.display = name === 'alarms' ? '' : 'none';
-  if (name === 'calendar') { renderCalAlarmList(); renderCalendar(); }
+  if (name === 'alarms') { renderCalAlarmList(); renderCalendar(); updateBackRowTop(); }
   if (name === 'timer') { renderTimerList(); }
   if (name === 'settings') { renderGroupName(); }
 }
@@ -2262,8 +2253,8 @@ function renderAlarms() {
       if (a.sound === 'music' && musicStore[a.id]) tags.push(`<span class="atag music">🎵 ${esc(musicStore[a.id].name)}</span>`);
       return `<div class="alarm-swipe-wrap" id="aswipe-${a.id}">
         <div class="alarm-swipe-del" id="adel-${a.id}">削除</div>
-        <div class="alarm-card${a.enabled ? '' : ' disabled'}" id="acard-${a.id}">
-          <div class="alarm-card-left">
+        <div class="alarm-card${a.enabled ? '' : ' disabled'}${a.id === selAlarmId ? ' cal-selected' : ''}" id="acard-${a.id}">
+          <div class="alarm-card-left" onclick="selCalAlarm('${a.id}')" title="タップしてカレンダー設定">
             <div class="alarm-time-big">${esc(a.time)}</div>
             <div class="alarm-subtitle">${esc(a.label || '（ラベルなし）')} — ${days}</div>
             <div class="alarm-tags">${tags.join('')}</div>
@@ -2274,8 +2265,10 @@ function renderAlarms() {
               <div class="sw-track"></div>
               <div class="sw-thumb"></div>
             </label>
-            <button class="icon-btn edit" onclick="openModal('${a.id}')"><span class="pencil-emoji">✏️</span></button>
-            <button class="alarm-hover-del" onclick="trashAlarm('${a.id}')" title="削除（ゴミ箱へ）">✕</button>
+            <div class="alarm-card-btns">
+              <button class="alarm-hover-del" onclick="trashAlarm('${a.id}')" title="削除（ゴミ箱へ）">✕</button>
+              <button class="icon-btn edit" onclick="openModal('${a.id}')"><span class="pencil-emoji">✏️</span></button>
+            </div>
           </div>
       </div>`;
     }).join('');
@@ -2517,7 +2510,7 @@ function deleteAlarm(id, noConfirm = false) {
 
 function toggleAlarm(id) {
   const a = alarms.find(x => x.id === id);
-  if (a) { a.enabled = !a.enabled; saveData(); renderAlarms(); updateNextInfo(); }
+  if (a) { a.enabled = !a.enabled; saveData(); renderAlarms(); renderCalAlarmList(); renderCalendar(); updateNextInfo(); }
 }
 
 // ───────────────────────────────────────────
@@ -2674,30 +2667,31 @@ function cUpdateFromEvent(e) {
 // ───────────────────────────────────────────
 // CALENDAR
 // ───────────────────────────────────────────
+// カレンダー編集対象の表示更新＋アラームカードのハイライト
 function renderCalAlarmList() {
-  const el = document.getElementById('cal-alarm-list');
+  const row = document.getElementById('cal-target-row');
   const active = alarms.filter(a => !a._trashed);
-  if (!active.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0;">アラームがありません</div>';
-    return;
+  const alarm = selAlarmId ? active.find(a => a.id === selAlarmId) : null;
+  if (!alarm) {
+    selAlarmId = null;
+    if (row) {
+      row.classList.remove('has-sel');
+      row.textContent = active.length
+        ? 'アラームのカードをタップすると、ここでON/OFFカレンダーを設定できます。'
+        : 'アラームがありません。右下の＋から追加してください。';
+    }
+  } else if (row) {
+    row.classList.add('has-sel');
+    row.innerHTML = `対象：<strong>${esc(alarm.time)}</strong> ${esc(alarm.label || '（ラベルなし）')} — 日付をタップしてON/OFFを切り替え`;
   }
-  el.innerHTML = active.map(a => {
-    const sel = a.id === selAlarmId;
-    return `<div class="cal-alarm-item${sel ? ' sel' : ''}" onclick="selCalAlarm('${a.id}')">
-      <div class="cal-alarm-item-l">
-        <div class="cal-ai-dot"></div>
-        <div>
-          <div class="cal-ai-time">${esc(a.time)}</div>
-          <div class="cal-ai-name">${esc(a.label || '（ラベルなし）')}</div>
-        </div>
-      </div>
-      <div class="cal-ai-status">${a.enabled ? '有効' : '無効'}</div>
-    </div>`;
-  }).join('');
+  document.querySelectorAll('.alarm-card').forEach(c => {
+    c.classList.toggle('cal-selected', alarm && c.id === 'acard-' + alarm.id);
+  });
 }
 
+// アラームカードをタップ（スイッチ・編集・削除ボタン以外）→ カレンダー編集対象として選択
 function selCalAlarm(id) {
-  selAlarmId = id;
+  selAlarmId = (selAlarmId === id) ? null : id;
   renderCalAlarmList();
   renderCalendar();
 }
@@ -2728,28 +2722,29 @@ function renderCalendar() {
     if (isHol) cls += ' holiday';
     else if (isSun) cls += ' sunday';
     else if (isSat) cls += ' saturday';
-    let dots = '';
     if (alarm) {
       const ov = (overrides[alarm.id] || {})[ds];
-      const willFire = willFireByDefault(alarm, dow, isHol);
-      if (ov === true) cls += ' s-force-on';
-      else if (ov === false) cls += ' s-force-off';
-      else if (willFire) cls += ' s-default-on';
-      else cls += ' s-default-off';
-      if (ov === true) dots += '<div class="cell-dot on"></div>';
-      else if (ov === false) dots += '<div class="cell-dot off"></div>';
-      else if (willFire) dots += '<div class="cell-dot on"></div>';
+      const willFire = willFireByDefault(alarm, dow, isHol, ds);
+      const effOn = ov === true || (ov === undefined && willFire);
+      cls += effOn ? ' s-on' : ' s-off';
     }
-    if (isHol) dots += '<div class="cell-dot hol"></div>';
-    html += `<div class="${cls}" onclick="toggleOverride('${ds}')">${d}${dots}</div>`;
+    html += `<div class="${cls}" onclick="toggleOverride('${ds}')">${d}</div>`;
   }
   document.getElementById('cal-grid').innerHTML = html;
 }
 
-function willFireByDefault(alarm, dow, isHol) {
+// 曜日指定がない（1回のみ）アラームは、「設定時刻を過ぎていない当日」のみ
+// 既定でON。それ以外の日をすべてONにしてしまうと、一括OFFができなくなるため。
+function willFireByDefault(alarm, dow, isHol, ds) {
   if (!alarm.enabled) return false;
   if (alarm.skipHolidays && isHol) return false;
-  if (!alarm.days?.length) return true;
+  if (!alarm.days?.length) {
+    const now = new Date();
+    const todayStr = fmtDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    if (ds !== todayStr) return false;
+    const [ah, am] = alarm.time.split(':').map(Number);
+    return (ah * 60 + am) >= (now.getHours() * 60 + now.getMinutes());
+  }
   return alarm.days.includes(dow);
 }
 
@@ -2759,7 +2754,7 @@ function toggleOverride(ds) {
   const cur = overrides[selAlarmId][ds];
   const alarm = alarms.find(a => a.id === selAlarmId);
   const d = new Date(ds); const dow = d.getDay(); const isHol = !!holidays[ds];
-  const def = willFireByDefault(alarm, dow, isHol);
+  const def = willFireByDefault(alarm, dow, isHol, ds);
   if (cur === undefined) overrides[selAlarmId][ds] = !def;
   else if (cur !== def) delete overrides[selAlarmId][ds];
   else overrides[selAlarmId][ds] = !cur;
@@ -2775,7 +2770,7 @@ function alarmMatchesAt(a, ds, dow, isHol, minOfDay) {
   if (ah * 60 + am !== minOfDay) return false;
   const ov = (overrides[a.id] || {})[ds];
   if (ov === false) return false;
-  if (ov !== true && !willFireByDefault(a, dow, isHol)) return false;
+  if (ov !== true && !willFireByDefault(a, dow, isHol, ds)) return false;
   return true;
 }
 
@@ -3045,11 +3040,16 @@ function updateHolidayStatus() {
 function updateNextInfo() {
   const el = document.getElementById('next-alarm-info');
   const next = calcNext();
-  if (!next) { el.innerHTML = '次のアラームなし'; return; }
-  const diff = next.date - new Date();
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  el.innerHTML = `次: <strong>${next.time}</strong>（${h > 0 ? h + '時間' : ''}${m}分後）`;
+  if (next) {
+    const diff = next.date - new Date();
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    el.innerHTML = `次: <strong>${next.time}</strong>（${h > 0 ? h + '時間' : ''}${m}分後）`;
+  } else {
+    el.innerHTML = '次のアラームなし';
+  }
+  // 曜日指定なし（1回のみ）アラームは時刻の経過で既定ON/OFFが変わるため、毎分カレンダー表示も更新
+  if (selAlarmId) renderCalendar();
 }
 
 function calcNext() {
@@ -3065,7 +3065,7 @@ function calcNext() {
       if (at <= now) continue;
       const ov = (overrides[a.id] || {})[ds];
       if (ov === false) continue;
-      if (ov !== true && !willFireByDefault(a, dow, isHol)) continue;
+      if (ov !== true && !willFireByDefault(a, dow, isHol, ds)) continue;
       if (!earliest || at < earliest.date) earliest = { date: at, time: a.time };
     }
     if (earliest) break;
