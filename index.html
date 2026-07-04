@@ -20,6 +20,19 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SmartAlarm 変更履歴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v23 (2026-07-04) iPhoneで音楽アラームが鳴らない問題を修正
+  【重大】iOSで音楽ファイルの自動再生が必ずブロックされていた問題を修正
+    - 原因: iOS(WebKit)は <audio> 要素「1個ごと」にユーザー操作中のplay()が必要。
+      発火のたびに new Audio() していたため、常に未アンロック要素となり
+      NotAllowedError でブロックされていた（AudioContextのアンロックとは別枠。
+      Androidはページ単位で解除されるため鳴っていた）
+    - 対策: 初回タップ時に無音WAVを再生してアンロックした共有<audio>要素を1個作り、
+      アラーム発火・タップ切替・停止のすべてでその要素を使い回す方式に変更
+    - 停止時は要素を破棄せずsrcのみ解放（アンロック状態を維持しつつメモリ返却）
+  ※iOS既知の制約: 本体側面のサイレントスイッチONだとビープ音(WebAudio)は消音される
+    （音楽ファイル(<audio>)はサイレントスイッチでも鳴ることが多い）。
+    画面ロック中・アプリを閉じている間は従来どおり鳴らない
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 v21 (2026-07-03) 不具合総点検・修正
   【重大】時刻入力欄の左右入れ替わりを修正
     - 左の入力欄に「分(t-m)」、右に「時(t-h)」が入っていたため、
@@ -1252,6 +1265,40 @@ let musicStore = {};
 // ── AudioContext アンロック（iOS/Android autoplay 対策） ──
 let _sharedAudioCtx = null;
 
+// ── 音楽再生用の共有<audio>要素（iOS対策の要） ──
+// iOS(WebKit)ではAudioContextと異なり、<audio>要素は「要素ごと」に
+// ユーザー操作中のplay()が一度必要。毎回 new Audio() すると常に
+// 未アンロックの要素になり、アラーム発火時の自動再生が必ず
+// NotAllowedError でブロックされる（Androidはページ単位で解除されるため鳴る）。
+// → 最初のタップで無音を再生してアンロックした1個の要素を使い回す。
+let _musicEl = null;
+const _SILENT_WAV = 'data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
+function _getMusicEl() {
+  if (!_musicEl) {
+    _musicEl = new Audio();
+    _musicEl.setAttribute('playsinline', '');
+    _musicEl.preload = 'auto';
+  }
+  return _musicEl;
+}
+
+function _unlockMusicEl() {
+  const el = _getMusicEl();
+  if (el._unlocked) return;
+  try {
+    el.muted = true;
+    el.src = _SILENT_WAV;
+    const p = el.play();
+    if (p && p.then) {
+      p.then(() => { el.pause(); el.muted = false; el._unlocked = true; })
+       .catch(() => { el.muted = false; });
+    } else {
+      el.pause(); el.muted = false; el._unlocked = true;
+    }
+  } catch (e) { try { el.muted = false; } catch (_) {} }
+}
+
 function _getSharedAudioCtx() {
   if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
     _sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1275,6 +1322,8 @@ function _unlockAudioCtx() {
       src.connect(ctx.destination);
       src.start(0);
     } catch (e) {}
+    // 音楽用の共有<audio>要素もこのタップでアンロック（iOS必須）
+    _unlockMusicEl();
     // 通知許可はユーザー操作中でないと取得できない（特にiOS）ため、ここでリクエスト
     try {
       if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -2726,7 +2775,8 @@ function renderCalendar() {
       const ov = (overrides[alarm.id] || {})[ds];
       const willFire = willFireByDefault(alarm, dow, isHol, ds);
       const effOn = ov === true || (ov === undefined && willFire);
-      cls += effOn ? ' s-on' : ' s-off';
+      if (effOn) cls += ' s-on';
+      else if (willFire && ov === false) cls += ' s-off'; // 既定で鳴る日を手動でスキップした場合のみグレー
     }
     html += `<div class="${cls}" onclick="toggleOverride('${ds}')">${d}</div>`;
   }
@@ -2875,11 +2925,13 @@ function startAlarmSound(a) {
     _pendingMusicAlarm = a;
     _musicStarted = false;
     const data = getFreshMusicData(a.id);
-    // まず自動再生を試みる（同じセッション内で一度でも操作していれば成功することが多い）
+    // まず自動再生を試みる
+    // iOS: 事前にアンロック済みの共有<audio>要素を使う（new Audio()だと必ずブロックされる）
     try {
-      const audio = new Audio();
+      const audio = _getMusicEl();
       audio.loop = true;
       audio.src = data;
+      try { audio.currentTime = 0; } catch (e) {}
       firingAudio = audio;
       audio.play().then(() => {
         if (firingAudio !== audio) return; // 既に停止済み
@@ -2921,9 +2973,10 @@ function handleStopTap() {
       // ビープを止めて音楽を開始
       stopAlarmSound();
       try {
-        firingAudio = new Audio();
+        firingAudio = _getMusicEl();
         firingAudio.loop = true;
         firingAudio.src = data;
+        try { firingAudio.currentTime = 0; } catch (e) {}
         firingAudio.play().catch(err => {
           // まだブロックされた場合はビープに戻す
           console.warn('[handleStopTap] play blocked:', err.message);
@@ -2947,7 +3000,8 @@ function handleStopTap() {
 
 function stopAlarmSound() {
   clearInterval(loopTimer); loopTimer = null;
-  if (firingAudio) { try { firingAudio.pause(); firingAudio.src = ''; } catch (e) {} firingAudio = null; }
+  // 共有<audio>要素はアンロック状態を保つため破棄しない（src解放でメモリだけ返す）
+  if (firingAudio) { try { firingAudio.pause(); firingAudio.removeAttribute('src'); firingAudio.load(); } catch (e) {} firingAudio = null; }
   // 共有コンテキストは close せず参照だけクリア（再利用するため）
   firingCtx = null;
 }
