@@ -20,6 +20,12 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SmartAlarm 変更履歴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v25 (2026-07-25)
+  アラーム：音楽ファイル選択時はSTOP未操作でも10分で自動停止（ループ再生自体は既存のaudio.loop=trueで対応済み）
+  タイマー：ステップごとに音楽ファイル・繰り返し回数を設定可能に
+    - ステップ編集欄の秒数▲▼ボタンを廃止し、音楽ファイル設定ボタン(🎵)に置換
+    - 設定回数分の再生時間がステップ時間を超える場合、次のステップ開始時に再生を停止
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 v23 (2026-07-04) iPhoneで音楽アラームが鳴らない問題を修正
   【重大】iOSで音楽ファイルの自動再生が必ずブロックされていた問題を修正
     - 原因: iOS(WebKit)は <audio> 要素「1個ごと」にユーザー操作中のplay()が必要。
@@ -483,6 +489,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
   touch-action:manipulation;min-width:28px;min-height:20px;
 }
 .phase-sec-spin-btn:active{background:var(--surface3);color:var(--text);}
+.phase-music-btn{width:30px;height:30px;font-size:14px;border-radius:8px;}
+.phase-music-btn.has-music{border-color:var(--accent);color:var(--accent);background:var(--accent-l);}
 .phase-item.active-phase .phase-num{color:var(--accent);font-weight:700;}
 .phase-item.drag-over-top{border-top:2.5px solid var(--accent);}
 .phase-item.drag-over-bottom{border-bottom:2.5px solid var(--accent);}
@@ -964,6 +972,39 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 </div>
 
 <!-- GROUP / USER MANAGEMENT SHEET -->
+<!-- TIMER STEP MUSIC SHEET -->
+<div class="sheet-overlay" id="phase-music-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-scroll">
+      <div class="sheet-title">ステップの音楽</div>
+      <div class="form-group">
+        <label class="form-label">音楽ファイル</label>
+        <div class="music-picker" onclick="document.getElementById('phase-music-input').click()">
+          <div class="music-picker-icon">🎵</div>
+          <div class="music-picker-info">
+            <div class="music-picker-name" id="phase-music-name">ファイルを選択…</div>
+            <div class="music-picker-sub">MP3・AAC・WAV・OGG 対応</div>
+          </div>
+          <div style="font-size:18px;color:var(--text3);">›</div>
+        </div>
+        <input type="file" id="phase-music-input" accept="audio/*" style="display:none" onchange="onPhaseMusicFile(event)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">繰り返し回数</label>
+        <input type="number" id="phase-music-repeat" class="form-input" min="1" max="99" value="1" inputmode="numeric"
+          style="width:100px;"
+          onchange="onPhaseMusicRepeatChange()" oninput="onPhaseMusicRepeatChange()">
+        <div class="time-hint">設定回数分の再生時間がステップの設定時間を超える場合、次のステップの開始タイミングで再生を止めます</div>
+      </div>
+      <button class="sopt-preview" style="width:100%;padding:10px;margin-bottom:8px;" onclick="removePhaseMusic()">🗑 音楽ファイルを削除</button>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-primary" onclick="closePhaseMusicSheet()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet-overlay" id="group-sheet">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -1257,6 +1298,8 @@ let calY, calM;
 let selAlarmId = null;
 let firingAlarm = null, firingAudio = null, firingCtx = null;
 let loopTimer = null;
+let _autoStopTarget = null; // 発火中アラームの強制停止予定時刻（epoch ms）。STOP未操作の場合に自動停止する
+const ALARM_AUTO_STOP_MIN = 10; // 何分でSTOP未操作のアラームを自動停止するか
 let lastCheckedEpochMin = Math.floor(Date.now() / 60000); // 前回チェックした「絶対分」
 let _snoozeTarget = null; // { at: 発火予定epoch(ms), alarm } — setTimeout非依存（スリープ補正）
 const ALARM_CATCHUP_MIN = 10; // 画面復帰時、何分前までの撃ち漏らしを遅延発火するか
@@ -1324,6 +1367,7 @@ function _unlockAudioCtx() {
     } catch (e) {}
     // 音楽用の共有<audio>要素もこのタップでアンロック（iOS必須）
     _unlockMusicEl();
+    _unlockTimerMusicEl();
     // 通知許可はユーザー操作中でないと取得できない（特にiOS）ため、ここでリクエスト
     try {
       if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -2828,6 +2872,13 @@ function checkAlarms() {
   const nowMs = Date.now();
   const nowEpochMin = Math.floor(nowMs / 60000);
 
+  // ── 発火中アラームがSTOPされないまま既定時間を超えたら自動停止 ──
+  // setTimeoutはスリープ中に間引かれるため、checkAlarms()の毎秒チェック（時刻ベース）で判定する
+  if (firingAlarm && _autoStopTarget && nowMs >= _autoStopTarget) {
+    autoStopFiringAlarm();
+    return;
+  }
+
   // ── スヌーズ発火（時刻ベース：バックグラウンド・スリープでも取りこぼさない） ──
   if (_snoozeTarget && nowMs >= _snoozeTarget.at && !firingAlarm) {
     const a = _snoozeTarget.alarm;
@@ -2873,6 +2924,7 @@ function checkAlarms() {
 
 function fireAlarm(a, lateMin = 0) {
   firingAlarm = a;
+  _autoStopTarget = Date.now() + ALARM_AUTO_STOP_MIN * 60 * 1000;
   document.getElementById('firing-time').textContent = a.time;
   document.getElementById('firing-label').textContent = (a.label || '起床の時間です') + (lateMin > 0 ? `（${lateMin}分遅れ）` : '');
   document.getElementById('firing-overlay').classList.add('open');
@@ -3010,11 +3062,20 @@ function stopAlarm() {
   stopAlarmSound();
   _pendingMusicAlarm = null;
   _musicStarted = false;
+  _autoStopTarget = null;
   const hint = document.getElementById('firing-music-hint');
   if (hint) hint.style.display = 'none';
   document.getElementById('firing-overlay').classList.remove('open');
   document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('firing'));
   firingAlarm = null;
+}
+
+// STOPが押されないまま既定時間が経過した場合の自動停止
+function autoStopFiringAlarm() {
+  const a = firingAlarm;
+  stopAlarm();
+  if (navigator.vibrate) navigator.vibrate(200);
+  showSnack(`⏰ ${ALARM_AUTO_STOP_MIN}分間操作がなかったため自動的に停止しました${a?.label ? '（' + a.label + '）' : ''}`);
 }
 
 function snoozeAlarm() {
@@ -3944,10 +4005,8 @@ function renderPhaseList() {
                 onblur="this._clearing=false;timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();renderPhaseList();"
                 oninput="timerPhases[${i}].sec=Math.max(1,parseInt(this.value)||1);saveCurrentPresetPhases();timerUpdateDisplay();"
                 onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.blur();}">
-            <div class="phase-sec-spin-col">
-              <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},1)">▲</button>
-              <button class="phase-sec-spin-btn" onclick="event.stopPropagation();spinPhaseSec(${i},-1)">▼</button>
-            </div>
+            <button class="phase-sec-spin-btn phase-music-btn${(p.musicId && musicStore[p.musicId]?.data) ? ' has-music' : ''}"
+              onclick="event.stopPropagation();openPhaseMusicSheet(${i})" title="このステップの音楽ファイル">🎵</button>
             <span class="phase-sep" style="font-size:10px;color:var(--text3);">秒</span>
           </div>
           <button class="phase-hover-del" onclick="event.stopPropagation();deletePhase(${i})" title="削除">✕</button>
@@ -4004,8 +4063,145 @@ function spinPhaseSec(i, delta) {
   timerUpdateDisplay();
 }
 
+// ── ステップの音楽ファイル設定シート ──
+let _editingPhaseIdx = -1;
+
+function openPhaseMusicSheet(i) {
+  const p = timerPhases[i];
+  if (!p) return;
+  if (!p.id) { p.id = genId(); saveCurrentPresetPhases(); }
+  _editingPhaseIdx = i;
+  const rec = p.musicId ? musicStore[p.musicId] : null;
+  document.getElementById('phase-music-name').textContent = (rec && rec.data) ? rec.name : 'ファイルを選択…';
+  document.getElementById('phase-music-repeat').value = p.musicRepeat || 1;
+  document.getElementById('phase-music-sheet').classList.add('open');
+}
+
+function closePhaseMusicSheet() {
+  document.getElementById('phase-music-sheet').classList.remove('open');
+  _editingPhaseIdx = -1;
+  renderPhaseList();
+}
+
+function onPhaseMusicFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  e.target.value = ''; // 同じファイルを再選択できるようリセット
+  if (_editingPhaseIdx < 0 || !timerPhases[_editingPhaseIdx]) return;
+  if (file.size > 20 * 1024 * 1024) {
+    showSnack('❌ ファイルが大きすぎます（20MBまで）');
+    return;
+  }
+  const p = timerPhases[_editingPhaseIdx];
+  if (!p.id) p.id = genId();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    musicStore[p.id] = { data: ev.target.result, name: file.name };
+    p.musicId = p.id;
+    document.getElementById('phase-music-name').textContent = file.name;
+    saveCurrentPresetPhases();
+    persistMusicStore().then(ok => { if (ok) showSnack('🎵 「' + file.name + '」を設定しました'); });
+  };
+  reader.onerror = () => showSnack('❌ ファイルの読み込みに失敗しました');
+  reader.readAsDataURL(file);
+}
+
+function onPhaseMusicRepeatChange() {
+  if (_editingPhaseIdx < 0 || !timerPhases[_editingPhaseIdx]) return;
+  let v = parseInt(document.getElementById('phase-music-repeat').value);
+  if (isNaN(v) || v < 1) v = 1;
+  if (v > 99) v = 99;
+  timerPhases[_editingPhaseIdx].musicRepeat = v;
+  saveCurrentPresetPhases();
+}
+
+function removePhaseMusic() {
+  if (_editingPhaseIdx < 0 || !timerPhases[_editingPhaseIdx]) return;
+  const p = timerPhases[_editingPhaseIdx];
+  if (p.musicId) { delete musicStore[p.musicId]; persistMusicStore(); }
+  p.musicId = null;
+  document.getElementById('phase-music-name').textContent = 'ファイルを選択…';
+  saveCurrentPresetPhases();
+  showSnack('音楽ファイルを削除しました');
+}
+
+// ── ステップ再生中の音楽（共有<audio>要素・iOS対策で専用に1個確保） ──
+let _timerMusicEl = null;
+let _timerMusicToken = 0;   // stopPhaseMusic()のたびに増やし、古いonendedハンドラを無効化する
+let _timerMusicPlayCount = 0;
+let _timerMusicTargetReps = 1;
+
+function _getTimerMusicEl() {
+  if (!_timerMusicEl) {
+    _timerMusicEl = new Audio();
+    _timerMusicEl.setAttribute('playsinline', '');
+    _timerMusicEl.preload = 'auto';
+  }
+  return _timerMusicEl;
+}
+
+function _unlockTimerMusicEl() {
+  const el = _getTimerMusicEl();
+  if (el._unlocked) return;
+  try {
+    el.muted = true;
+    el.src = _SILENT_WAV;
+    const p = el.play();
+    if (p && p.then) {
+      p.then(() => { el.pause(); el.muted = false; el._unlocked = true; })
+       .catch(() => { el.muted = false; });
+    } else {
+      el.pause(); el.muted = false; el._unlocked = true;
+    }
+  } catch (e) { try { el.muted = false; } catch (_) {} }
+}
+
+// ステップ開始時に呼ぶ：そのステップに音楽が設定されていれば指定回数まで再生する。
+// ステップが切り替わるタイミング（timerTick/skip/jump/finish/reset）では必ずstopPhaseMusic()を呼ぶため、
+// 「設定回数分の再生時間がステップ時間を超える場合は次のステップ開始時に停止」が自然に実現される。
+function playPhaseMusic(phase) {
+  stopPhaseMusic();
+  if (!phase || !phase.musicId) return;
+  const rec = musicStore[phase.musicId];
+  if (!rec || !rec.data) return;
+  _timerMusicToken++;
+  const myToken = _timerMusicToken;
+  _timerMusicPlayCount = 0;
+  _timerMusicTargetReps = Math.max(1, phase.musicRepeat || 1);
+  try {
+    const audio = _getTimerMusicEl();
+    audio.loop = false;
+    audio.src = rec.data;
+    try { audio.currentTime = 0; } catch (e) {}
+    audio.onended = () => {
+      if (myToken !== _timerMusicToken) return; // 既に停止/別ステップに切替済み
+      _timerMusicPlayCount++;
+      if (_timerMusicPlayCount < _timerMusicTargetReps) {
+        try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) {}
+      }
+    };
+    audio.play().catch(() => {}); // 再生できなくてもビープ/読み上げは別途鳴るため致命的ではない
+  } catch (e) {}
+}
+
+function stopPhaseMusic() {
+  _timerMusicToken++;
+  if (_timerMusicEl) {
+    try { _timerMusicEl.onended = null; _timerMusicEl.pause(); } catch (e) {}
+  }
+}
+
+function pausePhaseMusic() {
+  if (_timerMusicEl && _timerMusicEl.src) { try { _timerMusicEl.pause(); } catch (e) {} }
+}
+
+function resumePhaseMusic() {
+  if (_timerMusicEl && _timerMusicEl.src && _timerMusicPlayCount < _timerMusicTargetReps) {
+    try { _timerMusicEl.play().catch(() => {}); } catch (e) {}
+  }
+}
+
 function addPhase() {
-  timerPhases.push({ sec: 30, announce: '' });
+  timerPhases.push({ sec: 30, announce: '', id: genId(), musicId: null, musicRepeat: 1 });
   saveCurrentPresetPhases();
   renderPhaseList();
   timerUpdateDisplay();
@@ -4040,13 +4236,16 @@ function undoDeletePhase() { undoDeletePhaseAt(phaseUndoStack.length - 1); }
 
 function purgeDeletedPhaseAt(stackIdx) {
   if (stackIdx < 0 || stackIdx >= phaseUndoStack.length) return;
-  phaseUndoStack.splice(stackIdx, 1);
+  const [removed] = phaseUndoStack.splice(stackIdx, 1);
+  if (removed?.phase?.musicId) { delete musicStore[removed.phase.musicId]; persistMusicStore(); }
   renderPhaseList();
   showSnack('ステップを完全に削除しました');
 }
 
 function purgeAllDeletedPhases() {
   if (!phaseUndoStack.length) return;
+  phaseUndoStack.forEach(item => { if (item.phase?.musicId) delete musicStore[item.phase.musicId]; });
+  persistMusicStore();
   phaseUndoStack = [];
   renderPhaseList();
   showSnack('削除済みステップをすべて完全削除しました');
@@ -4077,6 +4276,7 @@ function timerStartStop() {
     timerRemain = timerPhases[0].sec;
     timerState = 'running';
     announcePhase(0);
+    playPhaseMusic(timerPhases[0]);
     resetRemainNextNotify(timerPhases[0].sec);
     timerTickBaseTime = Date.now();          // 追加
     timerTickBaseSec = timerPhases[0].sec;   // 追加
@@ -4085,12 +4285,14 @@ function timerStartStop() {
   } else if (timerState === 'running') {
     timerState = 'paused';
     clearInterval(timerInterval);
+    pausePhaseMusic();
     document.getElementById('timer-start-btn').textContent = '▶ 再開';
   } else if (timerState === 'paused') {
     timerState = 'running';
     timerTickBaseTime = Date.now();          // 追加
     timerTickBaseSec = timerRemain;          // 追加
     timerInterval = setInterval(timerTick, 1000);
+    resumePhaseMusic();
     document.getElementById('timer-start-btn').textContent = '⏸ 一時停止';
   }
   timerUpdateDisplay();
@@ -4117,6 +4319,7 @@ function timerTick() {
     timerTickBaseSec = timerPhases[timerPhaseIdx].sec;
     playBeep('phase');
     announcePhase(timerPhaseIdx);
+    playPhaseMusic(timerPhases[timerPhaseIdx]);
     resetRemainNextNotify(timerPhases[timerPhaseIdx].sec);
     renderPhaseList();
   }
@@ -4164,6 +4367,7 @@ function timerUpdateDisplay() {
 
 function timerFinish() {
   clearInterval(timerInterval);
+  stopPhaseMusic();
   timerState = 'idle';
   const timeEl = document.getElementById('timer-time');
   const nameEl = document.getElementById('timer-phase-name');
@@ -4181,6 +4385,7 @@ function timerFinish() {
 
 function timerReset() {
   clearInterval(timerInterval);
+  stopPhaseMusic();
   timerState = 'idle';
   timerPhaseIdx = 0;
   timerTotalElapsed = 0;
@@ -4200,6 +4405,7 @@ function timerSkipNext() {
   timerTickBaseSec = timerRemain;
   playBeep('phase');
   announcePhase(timerPhaseIdx);
+  playPhaseMusic(timerPhases[timerPhaseIdx]);
   resetRemainNextNotify(timerRemain);
   timerUpdateDisplay();
   renderPhaseList();
@@ -4214,6 +4420,7 @@ function timerSkipPrev() {
   timerTickBaseTime = Date.now();
   timerTickBaseSec = timerRemain;
   announcePhase(timerPhaseIdx);
+  playPhaseMusic(timerPhases[timerPhaseIdx]);
   resetRemainNextNotify(timerRemain);
   timerUpdateDisplay();
   renderPhaseList();
@@ -4228,6 +4435,7 @@ function timerJumpToStep(idx) {
     timerRemain = timerPhases[idx].sec;
     timerState = 'running';
     announcePhase(idx);
+    playPhaseMusic(timerPhases[idx]);
     resetRemainNextNotify(timerRemain);
     timerTickBaseTime = Date.now();
     timerTickBaseSec = timerPhases[idx].sec;
@@ -4240,6 +4448,7 @@ function timerJumpToStep(idx) {
     timerTickBaseTime = Date.now();
     timerTickBaseSec = timerRemain;
     announcePhase(idx);
+    playPhaseMusic(timerPhases[idx]);
     resetRemainNextNotify(timerRemain);
   }
   timerUpdateDisplay();
