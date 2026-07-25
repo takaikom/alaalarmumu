@@ -512,6 +512,15 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .timer-total-info{font-size:11px;color:var(--text3);}
 
 .timer-controls{display:flex;gap:10px;margin-top:14px;}
+.timer-detail-sticky-head{
+  position:sticky;top:var(--back-row-top,134px);z-index:40;
+  background:var(--bg);margin:0 -16px 12px;padding:0 16px;
+}
+.timer-detail-sticky-head .back-row{position:static;margin:0;padding:6px 0 8px;}
+.timer-detail-sticky-head .timer-controls-fixed{
+  position:static;margin:0;padding:0 0 10px;
+  border-bottom:1px solid var(--border);
+}
 .timer-btn{flex:1;padding:15px;border-radius:14px;border:none;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .12s,transform .1s;}
 .timer-btn:active{transform:scale(.97);}
 .timer-btn.primary{background:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(216,90,48,.3);}
@@ -617,12 +626,20 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
   <!-- タイマー詳細ビュー -->
   <div id="timer-detail-view" style="display:none;">
-    <div class="back-row">
-      <button class="back-btn" onclick="showTimerList()">‹</button>
-      <div class="timer-detail-title" id="timer-detail-title" onclick="renameCurrentTimer()" title="タップして名前を変更">タイマー</div>
+    <div class="timer-detail-sticky-head">
+      <div class="back-row">
+        <button class="back-btn" onclick="showTimerList()">‹</button>
+        <div class="timer-detail-title" id="timer-detail-title" onclick="renameCurrentTimer()" title="タップして名前を変更">タイマー</div>
+      </div>
+
+      <!-- ── コントロール（タイマー名の直下に固定表示） ── -->
+      <div class="timer-controls timer-controls-fixed">
+        <button class="timer-btn secondary" id="timer-reset-btn" onclick="timerReset()">リセット</button>
+        <button class="timer-btn primary" id="timer-start-btn" onclick="timerStartStop()">▶ スタート</button>
+      </div>
     </div>
 
-    <!-- ── カウントダウン表示（上に移動） ── -->
+    <!-- ── カウントダウン表示 ── -->
     <div class="timer-display-card">
       <div class="timer-phase-name" id="timer-phase-name">スタートを押してください</div>
       <div class="timer-phase-progress" id="timer-phase-progress"></div>
@@ -635,12 +652,6 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <button class="timer-skip-btn" onclick="timerSkipPrev()">◀ 前のステップ</button>
         <button class="timer-skip-btn" onclick="timerSkipNext()">次のステップ ▶</button>
       </div>
-    </div>
-
-    <!-- ── コントロール ── -->
-    <div class="timer-controls">
-      <button class="timer-btn secondary" id="timer-reset-btn" onclick="timerReset()">リセット</button>
-      <button class="timer-btn primary" id="timer-start-btn" onclick="timerStartStop()">▶ スタート</button>
     </div>
 
     <!-- ── フェーズ編集 ── -->
