@@ -20,6 +20,9 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SmartAlarm 変更履歴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v26 (2026-07-25)
+  タイマー：削除済みステップの表示位置を「ステップの設定」欄の先頭から「音の設定」の下（画面最下部）に変更
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 v25 (2026-07-25)
   アラーム：音楽ファイル選択時はSTOP未操作でも10分で自動停止（ループ再生自体は既存のaudio.loop=trueで対応済み）
   タイマー：ステップごとに音楽ファイル・繰り返し回数を設定可能に
@@ -720,6 +723,9 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         </div>
       </div>
     </div>
+
+    <!-- ── 削除済みステップ（一番下に表示） ── -->
+    <div id="phase-trash-section"></div>
   </div>
 </div>
 
@@ -3961,7 +3967,7 @@ function renderPhaseList() {
   const el = document.getElementById('phase-list');
   if (!el) return;
 
-  // ゴミ箱バーを先頭に表示（削除されたステップ）
+  // ゴミ箱バーは「音の設定」の下（一番下）に表示する
   let undoHtml = '';
   if (phaseUndoStack.length > 0) {
     undoHtml = phaseUndoStack.slice().reverse().map((item, ri) => {
@@ -3978,13 +3984,15 @@ function renderPhaseList() {
         </div>
       </div>`;
     }).join('');
-    undoHtml = `<div style="margin-bottom:6px;">
+    undoHtml = `<div style="margin-top:16px;">
       <div class="trash-section-label" style="margin-top:0;">🗑 削除済みステップ
         <button onclick="purgeAllDeletedPhases()">すべて削除</button>
       </div>
       ${undoHtml}
     </div>`;
   }
+  const trashEl = document.getElementById('phase-trash-section');
+  if (trashEl) trashEl.innerHTML = undoHtml;
 
   // 選択インデックスを範囲内に丸める
   if (timerPhases.length === 0) selectedPhaseIdx = -1;
@@ -4026,7 +4034,7 @@ function renderPhaseList() {
     </div>`;
   }).join('');
 
-  el.innerHTML = undoHtml + phasesHtml;
+  el.innerHTML = phasesHtml;
   // textarea の高さを内容に合わせて初期化
   el.querySelectorAll('.phase-announce-inline').forEach(ta => {
     ta.style.height = 'auto';
