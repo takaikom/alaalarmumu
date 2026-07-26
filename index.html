@@ -20,6 +20,16 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SmartAlarm 変更履歴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v31 (2026-07-27)
+  タイマー：「連続実行」ボタン（一覧上部）が即開始に見える問題を修正
+    - 塗りつぶし(accent色)→枠線のみのボタンに変更し、選択画面を開くだけであることが分かるように
+  タイマー連続実行モーダル：「この順番で連続実行する」ボタンが一覧のスクロールで隠れる問題を修正
+    - ボタンを画面下部に固定し、タイマー一覧のみスクロールする構成に変更
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v30 (2026-07-25)
+  タイマー詳細：タブバーとタイマー名の間の隙間・スクロール時のガタつきを修正
+    - user-tabs-wrap／tabsのsticky位置をハードコード値ではなく実測値ベースに統一
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 v29 (2026-07-25)
   タイマー一覧：並び替え機能を追加（ステップと同じく、選択→共通の▲▼ボタンで移動）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -163,9 +173,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
 
 /* TABS */
-.user-tabs-wrap{display:flex;align-items:center;overflow-x:auto;padding:0 16px;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:53px;z-index:49;min-height:40px;}
+.user-tabs-wrap{display:flex;align-items:center;overflow-x:auto;padding:0 16px;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:var(--header-h,53px);z-index:49;min-height:40px;}
 .user-tabs-wrap::-webkit-scrollbar{display:none;}
-.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:93px;z-index:48;}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--header-tabs-h,93px);z-index:48;}
 .tab-btn{flex:1;padding:10px 0;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color .15s,border-color .15s;}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
 
@@ -517,6 +527,8 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 .btn-add-phase{width:100%;padding:11px;border-radius:12px;border:1.5px dashed var(--border2);background:transparent;color:var(--text3);font-family:var(--font);font-size:13px;cursor:pointer;transition:border-color .12s,color .12s;}
 .btn-run-sequence{width:100%;padding:12px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 2px 12px rgba(216,90,48,.3);}
 .btn-run-sequence:active{background:var(--accent-d);}
+.btn-run-sequence-open{width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--accent);background:var(--accent-l);color:var(--accent);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;}
+.btn-run-sequence-open:active{background:var(--accent);color:#fff;}
 .btn-import-confirm{width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .12s,color .12s,border-color .12s,box-shadow .12s;}
 .btn-import-confirm.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(216,90,48,.3);}
 .btn-add-phase:active{border-color:var(--accent);color:var(--accent);}
@@ -643,7 +655,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
         <button class="lock-btn" id="timer-lock-btn" onclick="toggleTimerLock()" title="編集ロック">🔓</button>
       </div>
     </div>
-    <button class="btn-run-sequence" onclick="openTimerRunModal()">▶▶ 連続実行</button>
+    <button class="btn-run-sequence-open" onclick="openTimerRunModal()">▶▶ 連続実行するタイマーを選ぶ</button>
     <div id="timer-card-list"></div>
     <div style="display:flex;gap:8px;margin-top:8px;">
       <button class="btn-add-phase" style="flex:1;margin-top:0;" onclick="addTimerPreset()">＋ タイマーを追加</button>
@@ -1144,14 +1156,18 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 <!-- タイマー連続実行モーダル -->
 <div id="timer-run-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;">
-  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;max-height:80dvh;overflow-y:auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <div style="font-size:15px;font-weight:700;">▶▶ タイマーを連続実行</div>
-      <button onclick="closeTimerRunModal()" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;">✕</button>
+  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:80dvh;display:flex;flex-direction:column;">
+    <div style="padding:20px 16px 0;overflow-y:auto;flex:1;min-height:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:700;">▶▶ タイマーを連続実行</div>
+        <button onclick="closeTimerRunModal()" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">実行したいタイマーを順番にタップしてください（もう一度タップすると選択解除）。選択した順に自動で画面が切り替わりながら実行されます。</div>
+      <div id="timer-run-list"></div>
     </div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">実行したいタイマーを順番にタップしてください（もう一度タップすると選択解除）。選択した順に自動で画面が切り替わりながら実行されます。</div>
-    <div id="timer-run-list"></div>
-    <button class="btn-run-sequence" style="margin-top:14px;margin-bottom:0;" onclick="confirmTimerRun()">この順番で連続実行する</button>
+    <div style="padding:14px 16px calc(env(safe-area-inset-bottom) + 20px);border-top:1px solid var(--border);flex-shrink:0;">
+      <button class="btn-run-sequence" style="margin:0;" onclick="confirmTimerRun()">この順番で連続実行する</button>
+    </div>
   </div>
 </div>
 
@@ -1897,6 +1913,10 @@ function updateBackRowTop() {
   const h1 = header ? header.getBoundingClientRect().height : 53;
   const h2 = userTabs ? userTabs.getBoundingClientRect().height : 40;
   const h3 = tabs ? tabs.getBoundingClientRect().height : 40;
+  // user-tabs-wrap・tabsのsticky位置もハードコード値ではなくここで実測して合わせる
+  // （実測値とズレていると、スクロール時にタイマー名との間に隙間や小さなガタつきが出る）
+  document.documentElement.style.setProperty('--header-h', Math.round(h1) + 'px');
+  document.documentElement.style.setProperty('--header-tabs-h', Math.round(h1 + h2) + 'px');
   const total = Math.round(h1 + h2 + h3);
   document.documentElement.style.setProperty('--back-row-top', total + 'px');
 }
