@@ -28,6 +28,7 @@ v25 (2026-07-25)
   タイマー：ステップごとに音楽ファイル・繰り返し回数を設定可能に
     - ステップ編集欄の秒数▲▼ボタンを廃止し、音楽ファイル設定ボタン(🎵)に置換
     - 設定回数分の再生時間がステップ時間を超える場合、次のステップ開始時に再生を停止
+    - タイマーごみ箱の表示位置変更
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 v23 (2026-07-04) iPhoneで音楽アラームが鳴らない問題を修正
   【重大】iOSで音楽ファイルの自動再生が必ずブロックされていた問題を修正
@@ -669,7 +670,10 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <div class="phase-list-wrap">
       <div id="phase-list" class="phase-list"></div>
     </div>
-    <button class="btn-add-phase" onclick="addPhase()">＋ ステップを追加</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-add-phase" style="flex:1;" onclick="addPhase()">＋ ステップを追加</button>
+      <button class="btn-add-phase" style="flex:1;" onclick="openPhaseImportModal()">📋 貼り付けで取り込み</button>
+    </div>
 
     <!-- ── 音の設定 ── -->
     <div class="sec-label" style="margin-top:16px;">音の設定</div>
@@ -1111,6 +1115,23 @@ select.form-input option{background:var(--surface2);color:var(--text);}
     <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">統合したいタイマーを順番にタップしてください。タップした順にステップが結合されます（もう一度タップすると選択解除）。</div>
     <div id="timer-merge-list"></div>
     <button class="btn-add-phase" style="margin-top:14px;" onclick="confirmTimerMerge()">この順番で統合する</button>
+  </div>
+</div>
+
+<!-- ステップ貼り付け取り込みモーダル -->
+<div id="phase-import-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;">
+  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;max-height:80dvh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:15px;font-weight:700;">📋 ステップを取り込み</div>
+      <button onclick="closePhaseImportModal()" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6;">Excelで「アナウンス」「時間」の2列を選択してコピーし、下に貼り付けてください。時間は秒数（例:30）または分:秒（例:1:30）で入力できます。</div>
+    <textarea id="phase-import-textarea" placeholder="アナウンス&#9;時間&#10;準備&#9;30&#10;開始&#9;1:00" style="width:100%;min-height:160px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);padding:10px;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+      <input type="checkbox" id="phase-import-replace" style="width:18px;height:18px;">
+      <label for="phase-import-replace" style="font-size:12px;color:var(--text2);">取り込み前に既存のステップを削除する</label>
+    </div>
+    <button class="btn-add-phase" style="margin-top:14px;" onclick="confirmPhaseImport()">取り込む</button>
   </div>
 </div>
 
@@ -4229,6 +4250,49 @@ function addPhase() {
     const inputs = document.querySelectorAll('.phase-announce-inline');
     if (inputs.length) inputs[inputs.length - 1].focus();
   }, 50);
+}
+
+function openPhaseImportModal() {
+  document.getElementById('phase-import-textarea').value = '';
+  document.getElementById('phase-import-replace').checked = false;
+  document.getElementById('phase-import-modal').style.display = 'flex';
+}
+function closePhaseImportModal() {
+  document.getElementById('phase-import-modal').style.display = 'none';
+}
+function parsePhaseTimeToSec(str) {
+  const s = String(str).trim().replace(/[，,]/g, '');
+  if (!s) return null;
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  const parts = s.split(':').map(v => v.trim());
+  if (parts.some(v => v === '' || isNaN(v))) return null;
+  let sec = 0;
+  for (const p of parts) sec = sec * 60 + Number(p);
+  return sec;
+}
+function confirmPhaseImport() {
+  const raw = document.getElementById('phase-import-textarea').value;
+  const lines = raw.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l !== '');
+  if (!lines.length) { showSnack('貼り付けデータがありません'); return; }
+  const parsed = [];
+  const errors = [];
+  lines.forEach((line, i) => {
+    const cols = line.split('\t');
+    if (cols.length < 2) { errors.push(i + 1); return; }
+    const announce = cols[0].trim();
+    const sec = parsePhaseTimeToSec(cols[1]);
+    if (sec === null || sec <= 0) { errors.push(i + 1); return; }
+    parsed.push({ sec, announce, id: genId(), musicId: null, musicRepeat: 1 });
+  });
+  if (!parsed.length) { showSnack('取り込めるステップがありませんでした'); return; }
+  if (document.getElementById('phase-import-replace').checked) timerPhases = [];
+  timerPhases.push(...parsed);
+  saveCurrentPresetPhases();
+  renderPhaseList();
+  timerUpdateDisplay();
+  closePhaseImportModal();
+  const msg = errors.length ? `${parsed.length}件取り込みました（${errors.length}行は形式エラーでスキップ）` : `${parsed.length}件のステップを取り込みました`;
+  showSnack(msg);
 }
 
 function deletePhase(i) {
