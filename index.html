@@ -608,13 +608,13 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 
 <div class="user-tabs-wrap" id="user-tabs-wrap"></div>
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('alarms')">アラーム</button>
-  <button class="tab-btn" onclick="switchTab('timer')">タイマー</button>
+  <button class="tab-btn" onclick="switchTab('alarms')">アラーム</button>
+  <button class="tab-btn active" onclick="switchTab('timer')">タイマー</button>
   <button class="tab-btn" onclick="switchTab('settings')">設定</button>
 </div>
 
 <!-- ALARMS VIEW（カレンダー機能を統合） -->
-<div id="view-alarms" class="view active">
+<div id="view-alarms" class="view">
 
   <!-- カレンダー（コンパクト・上部固定） -->
   <div class="cal-compact-pin" id="cal-compact-pin">
@@ -645,7 +645,7 @@ select.form-input option{background:var(--surface2);color:var(--text);}
 </div>
 
 <!-- TIMER VIEW (一覧) -->
-<div id="view-timer" class="view">
+<div id="view-timer" class="view active">
   <div id="timer-list-view">
     <div class="sec-label-row">
       <div class="sec-label">タイマー</div>
@@ -1862,6 +1862,7 @@ function init() {
   renderGroupName();
   renderUserTabsWrap();
   updateBackRowTop();
+  document.getElementById('add-bar').style.display = 'none';
   document.getElementById('gas-url-input').value = getGasUrl();
   // 通知許可はロード時に要求しない（iOSはユーザー操作内でないと取得不可）→ 初回タップ時に要求
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1961,15 +1962,87 @@ async function testGasReceive() {
 // GASスクリプト雛形を表示
 function showGasScriptTemplate() {
   const tmpl = `// ====== GAS スクリプト (SmartAlarm用) ======
-const SHEET_NAME = 'SmartAlarm';
+const SHEET_NAME = 'smartalarm_data';
+const HEADERS = ['id','name','alarms','holidays','overrides','snoozeMin','timerPresets','updatedAt','deleted'];
+
+function getSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+  return sheet;
+}
+
+function readData() {
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  const users = [], deletedUsers = [];
+  if (lastRow >= 2) {
+    const rows = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    rows.forEach(r => {
+      const [id, name, alarms, holidays, overrides, snoozeMin, timerPresets, updatedAt, deleted] = r;
+      if (!id) return;
+      const u = {
+        id, name,
+        alarms: safeParse(alarms, []),
+        holidays: safeParse(holidays, {}),
+        overrides: safeParse(overrides, {}),
+        snoozeMin: Number(snoozeMin) || 10,
+        timerPresets: safeParse(timerPresets, []),
+        updatedAt: Number(updatedAt) || 0
+      };
+      (deleted === true ? deletedUsers : users).push(u);
+    });
+  }
+  return { users, deletedUsers, groupName: PropertiesService.getScriptProperties().getProperty('groupName') || '' };
+}
+
+function writeData(payload) {
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  const idCol = lastRow >= 2 ? sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat() : [];
+
+  const upsert = (u, deleted) => {
+    const row = [
+      u.id, u.name || '',
+      JSON.stringify(u.alarms || []),
+      JSON.stringify(u.holidays || {}),
+      JSON.stringify(u.overrides || {}),
+      Number(u.snoozeMin) || 10,
+      JSON.stringify(u.timerPresets || []),
+      u.updatedAt || Date.now(),
+      deleted
+    ];
+    const idx = idCol.indexOf(u.id);
+    if (idx >= 0) {
+      sheet.getRange(idx + 2, 1, 1, HEADERS.length).setValues([row]);
+    } else {
+      sheet.appendRow(row);
+      idCol.push(u.id);
+    }
+  };
+
+  (payload.users || []).forEach(u => upsert(u, false));
+  (payload.deletedUsers || []).forEach(u => upsert(u, true));
+
+  if (payload.groupName) {
+    PropertiesService.getScriptProperties().setProperty('groupName', payload.groupName);
+  }
+}
+
+function safeParse(v, fallback) {
+  if (!v) return fallback;
+  try { return JSON.parse(v); } catch { return fallback; }
+}
 
 function doGet(e) {
   try {
-    const data = readData();
     return ContentService
-      .createTextOutput(JSON.stringify(data))
+      .createTextOutput(JSON.stringify(readData()))
       .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
+  } catch (err) {
     return ContentService
       .createTextOutput(JSON.stringify({ users: [], deletedUsers: [], error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1977,18 +2050,16 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  // 排他ロック（同時書き込みを防ぐ）
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000); // 最大10秒待機
-  } catch(e) {
+    lock.waitLock(10000);
+  } catch (e) {
     return ContentService
       .createTextOutput(JSON.stringify({ ok: false, error: 'ロック取得タイムアウト' }))
       .setMimeType(ContentService.MimeType.JSON);
   }
   try {
     const incoming = JSON.parse(e.postData.contents);
-    // 書き込むデータのバリデーション
     if (!incoming || !Array.isArray(incoming.users)) {
       throw new Error('不正なデータ形式: usersが配列ではありません');
     }
@@ -1996,41 +2067,13 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true }))
       .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
+  } catch (err) {
     return ContentService
       .createTextOutput(JSON.stringify({ ok: false, error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   } finally {
     lock.releaseLock();
   }
-}
-
-function readData() {
-  const sheet = getSheet();
-  const val = sheet.getRange('A1').getValue();
-  if (!val) return { users: [], deletedUsers: [] };
-  try {
-    const data = JSON.parse(val);
-    if (!data.users) data.users = [];
-    if (!data.deletedUsers) data.deletedUsers = [];
-    return data;
-  } catch {
-    return { users: [], deletedUsers: [] };
-  }
-}
-
-function writeData(data) {
-  const sheet = getSheet();
-  sheet.getRange('A1').setValue(JSON.stringify(data));
-  // バックアップ: B1に最終更新日時を記録
-  sheet.getRange('B1').setValue(new Date().toISOString());
-}
-
-function getSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
-  return sheet;
 }`;
   // alert()はiOSのインストール済みPWAで動作しないため、コピーボタン付きシートで表示
   const ov = document.createElement('div');
@@ -4107,6 +4150,7 @@ function _runQueueAdvance() {
     _runQueue = [];
     _runQueueIdx = -1;
     _updateRunBadge();
+    if (_wakeLockEnabled) _releaseWakeLock();
     showSnack('🎉 連続実行がすべて完了しました');
     return;
   }
@@ -4119,6 +4163,7 @@ function cancelTimerRunQueue() {
   _runQueue = [];
   _runQueueIdx = -1;
   _updateRunBadge();
+  if (_wakeLockEnabled) _releaseWakeLock();
   showSnack('連続実行を中止しました');
 }
 
@@ -4677,7 +4722,7 @@ function timerFinish() {
   document.getElementById('timer-start-btn').textContent = '▶ スタート';
   speak('タイマー完了です！');
   playBeep('finish');
-  if (_wakeLockEnabled) _releaseWakeLock();
+  if (_wakeLockEnabled && !_runActive) _releaseWakeLock();
   if (_runActive) { _runQueueAdvance(); return; }
 }
 
